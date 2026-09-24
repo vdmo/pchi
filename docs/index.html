@@ -44,11 +44,17 @@
     </nav>
 
     <!-- Hero Section -->
-    <section class="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden">
+    <section class="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden min-h-[80vh] flex items-center">
+        <!-- Video Background -->
         <div class="absolute inset-0 z-0">
-            <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-teal-900/20 via-[#050505] to-[#050505]"></div>
+            <video autoplay loop muted playsinline class="absolute inset-0 w-full h-full object-cover opacity-30 mix-blend-screen">
+                <source src="assets/background.mp4" type="video/mp4">
+                Your browser does not support the video tag.
+            </video>
+            <!-- Gradient Overlay for readability -->
+            <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-teal-900/20 via-[#050505]/80 to-[#050505]"></div>
         </div>
-        <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center w-full">
             <h1 class="text-5xl md:text-7xl font-extrabold tracking-tight mb-6">
                 Mathematical Governance<br>
                 <span class="gradient-text">For Scene State</span>

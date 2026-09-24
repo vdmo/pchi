@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Documentation - PCHI 2.0 Protocol</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=JetBrains+Mono:wght@400;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #050505; color: #f3f4f6; }
+        code, pre { font-family: 'JetBrains Mono', monospace !important; }
+        .gradient-text {
+            background: linear-gradient(135deg, #14b8a6, #8b5cf6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+        }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #0a0a0a; }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #555; }
+        
+        .sidebar-link { transition: all 0.2s; border-left: 2px solid transparent; }
+        .sidebar-link:hover { color: #14b8a6; border-left-color: #14b8a6; background: rgba(255,255,255,0.02); }
+        .sidebar-link.active { color: #14b8a6; border-left-color: #14b8a6; background: rgba(20,184,166,0.1); font-weight: 600; }
+        
+        h1, h2, h3, h4 { scroll-margin-top: 100px; }
+    </style>
+</head>
+<body class="antialiased selection:bg-teal-500 selection:text-white flex flex-col min-h-screen">
+
+    <!-- Navigation -->
+    <nav class="fixed w-full z-50 glass-panel border-b border-white/10 bg-[#050505]/95">
+        <div class="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex-shrink-0 flex items-center">
+                    <a href="index.html" class="text-2xl font-bold tracking-tighter gradient-text hover:opacity-80 transition-opacity">PCHI 2.0</a>
+                    <span class="ml-4 pl-4 border-l border-white/20 text-gray-400 font-medium">Documentation</span>
+                </div>
+                <div class="hidden md:flex space-x-8">
+                    <a href="index.html" class="text-sm font-medium text-gray-300 hover:text-teal-400 transition-colors">Home</a>
+                    <a href="index.html#projects" class="text-sm font-medium text-gray-300 hover:text-teal-400 transition-colors">Tools</a>
+                    <a href="https://github.com/primeswarm" target="_blank" class="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-md text-sm font-medium transition-colors border border-white/10">GitHub</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="flex-grow pt-16 flex max-w-screen-2xl mx-auto w-full">
+        
+        <!-- Sidebar -->
+        <aside class="hidden lg:block w-64 flex-shrink-0 border-r border-white/10 overflow-y-auto fixed h-[calc(100vh-64px)] pb-10">
+            <nav class="p-6 space-y-8">
+                <div>
+                    <h5 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Getting Started</h5>
+                    <ul class="space-y-1">
+                        <li><a href="#introduction" class="sidebar-link block py-2 px-3 text-sm text-gray-300 rounded-r">Introduction</a></li>
+                        <li><a href="#why-pchi" class="sidebar-link block py-2 px-3 text-sm text-gray-300 rounded-r">Why PCHI?</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h5 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Core Concepts</h5>
+                    <ul class="space-y-1">
+                        <li><a href="#pir-invariants" class="sidebar-link block py-2 px-3 text-sm text-gray-300 rounded-r">PIR Invariants</a></li>
+                        <li><a href="#only-lang" class="sidebar-link block py-2 px-3 text-sm text-gray-300 rounded-r">Only-Lang Governance</a></li>
+                        <li><a href="#message-schema" class="sidebar-link block py-2 px-3 text-sm text-gray-300 rounded-r">Message Schema</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h5 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Architecture</h5>
+                    <ul class="space-y-1">
+                        <li><a href="#conductor" class="sidebar-link block py-2 px-3 text-sm text-gray-300 rounded-r">PCHI Conductor</a></li>
+                        <li><a href="#integration-patterns" class="sidebar-link block py-2 px-3 text-sm text-gray-300 rounded-r">Integration Patterns</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h5 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Tool Integrations</h5>
+                    <ul class="space-y-1">
+                        <li><a href="#resolume" class="sidebar-link block py-2 px-3 text-sm text-gray-300 rounded-r">Resolume Bridge</a></li>
+                        <li><a href="#touchdesigner" class="sidebar-link block py-2 px-3 text-sm text-gray-300 rounded-r">TouchDesigner CHOP</a></li>
+                        <li><a href="#ableton" class="sidebar-link block py-2 px-3 text-sm text-gray-300 rounded-r">Ableton Max Device</a></li>
+                    </ul>
+                </div>
+            </nav>
+        </aside>
+
+        <!-- Main Documentation Content -->
+        <main class="flex-1 min-w-0 px-4 sm:px-6 lg:px-12 py-10 lg:ml-64 prose prose-invert prose-teal max-w-4xl">
+            
+            <h1 id="introduction" class="text-4xl font-extrabold tracking-tight mb-4">PCHI 2.0 Protocol Documentation</h1>
+            <p class="text-xl text-gray-400 mb-10 border-b border-white/10 pb-10">
+                PCHI (Peachy) v2.0 is a scene state protocol with embedded PIR (Prime Integer Relations) mathematical invariants that enables unprecedented coordination, verification, and intelligence in live creative software.
+            </p>
+
+            <h2 id="why-pchi" class="text-2xl font-bold mt-12 mb-6 text-white">Why PCHI?</h2>
+            <p>
+                Live shows involve 10+ tools (Resolume, TouchDesigner, Ableton, lighting consoles, tracking systems) connected via 50+ custom OSC mappings. Scene coherence is maintained by convention, not mathematics. When something breaks, there's no way to prove the system is in a valid state.
+            </p>
+            <p>
+                Unlike traditional protocols like OSC, MIDI, or NDI, PCHI standardizes the "letter" (schema) while being transport-agnostic, and crucially, provides <strong>mathematical guarantees of scene coherence</strong>.
+            </p>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 my-8">
+                <div class="glass-panel p-4 rounded-lg">
+                    <h4 class="font-bold text-teal-400 m-0">The Spiderweb Problem</h4>
+                    <p class="text-sm mt-2 mb-0">14+ custom mappings requiring separate parsers, susceptible to silent failures.</p>
+                </div>
+                <div class="glass-panel p-4 rounded-lg border-teal-500/30 border">
+                    <h4 class="font-bold text-teal-400 m-0">The PCHI Solution</h4>
+                    <p class="text-sm mt-2 mb-0">All tools communicate with a single Conductor using a unified, validated schema.</p>
+                </div>
+            </div>
+
+            <hr class="border-white/10 my-12">
+
+            <h2 id="pir-invariants" class="text-2xl font-bold mt-12 mb-6 text-teal-300">PIR Invariants</h2>
+            <p>
+                Every PCHI message carries PIR invariants that mathematically prove the scene is in equilibrium. Before any state change is applied, the PCHI Conductor validates these values.
+            </p>
+            <ul>
+                <li><strong>Equilibrium Check:</strong> Uses the Prouhet-Thue-Morse sequence to verify mathematical balance (~62 µs per check).</li>
+                <li><strong>Coherence Gap:</strong> Measures variance from the mean to detect state drift over time.</li>
+                <li><strong>Curvature Signature:</strong> Approximates the second derivative for smoothness and transition safety.</li>
+            </ul>
+
+            <pre><code class="language-json">"pirInvariants": {
+  "equilibriumCheck": {
+    "residual": 0.000000000001,
+    "precision": 1e-12,
+    "signSequence": [1, -1, -1, 1]
+  },
+  "coherenceGap": 0.0234,
+  "curvatureSignature": "0.001234, -0.000567, 0.000890",
+  "residual": 0.000000000001
+}</code></pre>
+
+            <h2 id="only-lang" class="text-2xl font-bold mt-12 mb-6 text-purple-300">Only-Lang Governance (Safe AI)</h2>
+            <p>
+                AI agents are powerful but dangerous in live environments. They can make decisions that break visual coherence or create unsafe conditions (e.g., blinding strobe lights). Only-Lang rules define mathematical boundaries for all behaviors.
+            </p>
+            <pre><code class="language-lua">if kraken_tentacle.wobbliness > 0.8
+then
+    kraken_tentacle.wobbliness = 0.8
+end</code></pre>
+            <p>
+                The PCHI Conductor enforces these rules before any generative or user-generated state change is applied. Safe suggestions pass; dangerous ones are clamped or rejected.
+            </p>
+
+            <h2 id="message-schema" class="text-2xl font-bold mt-12 mb-6 text-white">Message Schema</h2>
+            <p>PCHI supports multiple message types based on the context of the broadcast:</p>
+            <ul>
+                <li><code>scene_update</code>: Object transforms (x, y, z) and custom data</li>
+                <li><code>control_parameter</code>: Parameter changes for target systems (e.g. opacity, playback speed)</li>
+                <li><code>musical_context</code>: BPM, beat count, kick/snare detection, song sections</li>
+                <li><code>artist_tracking</code>: Real-time position and velocity tracking</li>
+                <li><code>heartbeat</code>: System health and connection monitoring</li>
+            </ul>
+
+            <hr class="border-white/10 my-12">
+
+            <h2 id="conductor" class="text-2xl font-bold mt-12 mb-6 text-white">PCHI Conductor</h2>
+            <p>
+                The <strong>PrimeSwarm Engine</strong> acts as the PCHI Conductor. It is a central Rust-based server that:
+            </p>
+            <ol>
+                <li>Receives PCHI messages from all tools via UDP, TCP, WebSocket, or OSC.</li>
+                <li>Validates PIR invariants instantly.</li>
+                <li>Applies Only-Lang rules.</li>
+                <li>Broadcasts the unified, coherent state to all receivers.</li>
+            </ol>
+            <pre><code class="language-rust">// Running the PCHI Conductor
+#[tokio::main]
+async fn main() {
+    let conductor = PCHIConductor::new(1e-12);
+    conductor.start_transport("0.0.0.0:8888").await.unwrap();
+    conductor.load_rules("kraken-rules.only").await.unwrap();
+    tokio::signal::ctrl_c().await.unwrap();
+}</code></pre>
+
+            <h2 id="integration-patterns" class="text-2xl font-bold mt-12 mb-6 text-white">Integration Patterns</h2>
+            
+            <h3>1. PCHI Hosts (Receivers)</h3>
+            <p>Hosts receive PCHI messages and apply them to internal state (e.g., Unreal Engine, TouchDesigner). They listen to the Conductor's validated broadcast and automatically reject disequilibrium.</p>
+            
+            <h3>2. PCHI Clients (Senders)</h3>
+            <p>Clients generate PCHI messages from their native state and broadcast them to the Conductor. They calculate their own PIR invariants prior to sending (e.g., Ableton Live, Resolume Arena, tracking hardware).</p>
+
+            <hr class="border-white/10 my-12">
+
+            <h2 id="resolume" class="text-2xl font-bold mt-12 mb-6 text-pink-400">Resolume Bridge (Python / OSC)</h2>
+            <p>
+                This bridge listens to standard OSC messages from Resolume Arena, calculates the math, converts them to PCHI messages, and forwards them to the Conductor.
+            </p>
+            <pre><code class="language-bash">pip install python-osc numpy
+python resolume_pchi_bridge.py \
+    --resolume-port 7000 \
+    --pchi-host 127.0.0.1 \
+    --pchi-port 8888 \
+    --threshold 1e-12</code></pre>
+            <p><strong>OSC Mapping Example:</strong> <code>/composition/layers/{layer_id}/video/opacity</code> automatically maps to a PCHI <code>control_parameter</code> targeted at the layer.</p>
+
+            <h2 id="touchdesigner" class="text-2xl font-bold mt-12 mb-6 text-purple-400">TouchDesigner CHOP (Python)</h2>
+            <p>
+                A Python CHOP that connects to the PCHI Conductor via UDP. It dynamically creates channels based on incoming scene objects and musical data.
+            </p>
+            <ul>
+                <li><strong>Equilibrium Channels:</strong> <code>equilibrium</code>, <code>coherence_gap</code></li>
+                <li><strong>Musical Channels:</strong> <code>bpm</code>, <code>beat</code>, <code>kick</code>, <code>snare</code></li>
+                <li><strong>Object Channels:</strong> <code>{object_id}_x</code>, <code>_y</code>, <code>_z</code></li>
+            </ul>
+            <p>Connect this CHOP to a Geometry COMP to mathematically drive object transforms in real-time.</p>
+
+            <h2 id="ableton" class="text-2xl font-bold mt-12 mb-6 text-yellow-400">Ableton Max Device</h2>
+            <p>
+                A Max for Live device that monitors Ableton Live's musical state (BPM, clip changes). It calculates PIR invariants directly from musical notes (pitch values mapped to Prouhet-Thue-Morse sequences) and emits a <code>musical_context</code> payload.
+            </p>
+
+            <hr class="border-white/10 my-12">
+            
+            <div class="bg-teal-900/20 border border-teal-500/30 p-6 rounded-xl mt-12 mb-20">
+                <h3 class="text-teal-400 font-bold m-0 mb-2">Ready to Build?</h3>
+                <p class="text-sm m-0 text-gray-300">
+                    Download the schemas, tools, and conductor binaries from the <a href="index.html#projects" class="text-white underline">Projects & Downloads</a> section to start orchestrating your own mathematically governed live shows.
+                </p>
+            </div>
+            
+        </main>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-rust.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-lua.min.js"></script>
+    <script>
+        // Simple script to highlight active sidebar link based on scroll position
+        const sections = document.querySelectorAll('h1[id], h2[id]');
+        const navLinks = document.querySelectorAll('.sidebar-link');
+        
+        window.addEventListener('scroll', () => {
+            let current = '';
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                if (scrollY >= sectionTop - 150) {
+                    current = section.getAttribute('id');
+                }
+            });
+            
+            navLinks.forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('href').includes(current) && current !== '') {
+                    link.classList.add('active');
+                }
+            });
+        });
+    </script>
+</body>
+</html>

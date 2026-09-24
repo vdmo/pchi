@@ -1,0 +1,83 @@
+# Only-Lang Rules for Kraken Tentacle Scene
+# PCHI v2.0 + PIR Mathematical Governance
+
+# Set equilibrium precision threshold
+harmony(1e-12)
+
+# Tentacle wobbliness must maintain Prouhet-Thue-Morse balance
+# Rule: sum(tentacle_wobbliness * signs) = 0
+evolve(tentacle_system, total_wobbliness)
+let signs = [1, -1, -1, 1, 1, -1, -1, 1]  # PTM sequence for 8 tentacles
+let wobbliness_sum = sum(tentacle_wobbliness[i] * signs[i] for i in 0..8)
+
+if abs(wobbliness_sum) > 1e-12
+then
+    escalate("Tentacle wobbliness violates equilibrium")
+    residual()
+end
+
+# Tentacle curl must stay within harmonic range
+evolve(tentacle_system, total_curl)
+if tentacle_system.total_curl > 4.0
+then
+    deny("Tentacle curl exceeds harmonic threshold")
+    residual()
+end
+
+# Individual tentacle constraints
+for tentacle in tentacle_system.tentacles
+    evolve(tentacle, wobbliness)
+    evolve(tentacle, curl)
+    
+    # Wobbliness must be in [0.0, 1.0]
+    if tentacle.wobbliness < 0.0 or tentacle.wobbliness > 1.0
+    then
+        deny("Tentacle wobbliness out of range")
+        residual()
+    end
+    
+    # Curl must be in [0.0, 1.0]
+    if tentacle.curl < 0.0 or tentacle.curl > 1.0
+    then
+        deny("Tentacle curl out of range")
+        residual()
+    end
+end
+
+# Musical context integration
+evolve(musical_context, bpm)
+evolve(musical_context, kick)
+
+# If kick drum AND wobbliness in harmony, trigger "peak state"
+if musical_context.kick == true and abs(wobbliness_sum) < 0.1
+then
+    evolve(kraken_main, peak_state)
+    residual()
+end
+
+# Safety: Prevent excessive animation speed
+evolve(tentacle_system, animation_speed)
+if tentacle_system.animation_speed > 2.0
+then
+    deny("Animation speed exceeds safety limit")
+    residual()
+end
+
+# Coherence gap monitoring
+evolve(scene_state, coherence_gap)
+if scene_state.coherence_gap > 0.5
+then
+    escalate("Scene coherence gap too large")
+    residual()
+end
+
+# Artist tracking integration (if available)
+evolve(artist_tracking, position)
+if artist_tracking.position.z < 0.0  # Artist too close to camera
+then
+    evolve(kraken_main, defensive_posture)
+    residual()
+end
+
+# Final equilibrium check
+residual()

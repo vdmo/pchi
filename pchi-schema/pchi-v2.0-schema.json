@@ -1,0 +1,139 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://pchi.io/schemas/pchi-v2.0.json",
+  "title": "PCHI v2.0 Message Schema",
+  "description": "PCHI (Peachy) protocol schema with PIR mathematical invariants for scene state management",
+  "type": "object",
+  "required": ["version", "type", "sourceId", "timestamp", "pirInvariants", "payload"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "const": "2.0.0",
+      "description": "Schema version"
+    },
+    "type": {
+      "type": "string",
+      "enum": ["scene_update", "control_parameter", "musical_context", "artist_tracking", "heartbeat"],
+      "description": "Message type"
+    },
+    "sourceId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Source identifier"
+    },
+    "timestamp": {
+      "type": "number",
+      "description": "Timestamp in milliseconds since epoch"
+    },
+    "pirInvariants": {
+      "$ref": "#/definitions/pirInvariants",
+      "description": "PIR mathematical invariants"
+    },
+    "payload": {
+      "type": "object",
+      "description": "Message payload"
+    }
+  },
+  "definitions": {
+    "pirInvariants": {
+      "type": "object",
+      "required": ["equilibriumCheck", "coherenceGap", "curvatureSignature", "residual"],
+      "properties": {
+        "equilibriumCheck": {
+          "$ref": "#/definitions/equilibriumCheck"
+        },
+        "coherenceGap": {
+          "type": "number",
+          "minimum": 0
+        },
+        "curvatureSignature": {
+          "type": "string",
+          "pattern": "^([0-9.]+,\\s*)*[0-9.]+$"
+        },
+        "residual": {
+          "type": "number"
+        }
+      }
+    },
+    "equilibriumCheck": {
+      "type": "object",
+      "required": ["residual", "precision", "signSequence"],
+      "properties": {
+        "residual": {
+          "type": "number"
+        },
+        "precision": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "signSequence": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "enum": [-1, 1]
+          }
+        }
+      }
+    },
+    "transform": {
+      "type": "object",
+      "required": ["position", "rotation", "scale"],
+      "properties": {
+        "position": {
+          "type": "array",
+          "items": {"type": "number"},
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "rotation": {
+          "type": "array",
+          "items": {"type": "number"},
+          "minItems": 4,
+          "maxItems": 4,
+          "description": "Quaternion (x, y, z, w)"
+        },
+        "scale": {
+          "type": "array",
+          "items": {"type": "number"},
+          "minItems": 3,
+          "maxItems": 3
+        }
+      }
+    },
+    "sceneObject": {
+      "type": "object",
+      "required": ["id", "transform"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "transform": {
+          "$ref": "#/definitions/transform"
+        },
+        "customData": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "pirConstraints": {
+          "$ref": "#/definitions/objectConstraints"
+        }
+      }
+    },
+    "objectConstraints": {
+      "type": "object",
+      "required": ["harmonyRule", "allowedRange"],
+      "properties": {
+        "harmonyRule": {
+          "type": "string"
+        },
+        "allowedRange": {
+          "type": "array",
+          "items": {"type": "number"},
+          "minItems": 2,
+          "maxItems": 2
+        }
+      }
+    }
+  }
+}

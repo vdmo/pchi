@@ -1,0 +1,80 @@
+namespace pchi;
+
+enum MessageType : byte {
+  SceneUpdate = 0,
+  ControlParameter = 1,
+  MusicalContext = 2,
+  ArtistTracking = 3,
+  Heartbeat = 4
+}
+
+table Transform {
+  position: [double];
+  rotation: [double];
+  scale: [double];
+}
+
+table ObjectConstraints {
+  harmony_rule: string;
+  allowed_range_min: double;
+  allowed_range_max: double;
+}
+
+table SceneObject {
+  id: string;
+  transform: Transform;
+  custom_data: [string];  // JSON strings for flexibility
+  pir_constraints: ObjectConstraints;
+}
+
+table SceneUpdateData {
+  objects: [SceneObject];
+}
+
+table ControlParameterData {
+  target_id: string;
+  parameter: string;
+  value: string;  // JSON string for flexibility
+}
+
+table MusicalContextData {
+  bpm: double;
+  beat: uint32;
+  kick: bool;
+  snare: bool;
+  section: string;
+}
+
+table ArtistTrackingData {
+  artist_id: string;
+  transform: Transform;
+  velocity: [double];
+}
+
+table EquilibriumCheck {
+  residual: double;
+  precision: double;
+  sign_sequence: [int8];
+}
+
+table PIRInvariants {
+  equilibrium_check: EquilibriumCheck;
+  coherence_gap: double;
+  curvature_signature: string;
+  residual: double;
+}
+
+table PCHIMessage {
+  version: string;
+  message_type: MessageType;
+  source_id: string;
+  timestamp: double;
+  pir_invariants: PIRInvariants;
+  // Payload as union
+  scene_update: SceneUpdateData;
+  control_parameter: ControlParameterData;
+  musical_context: MusicalContextData;
+  artist_tracking: ArtistTrackingData;
+}
+
+root_type PCHIMessage;

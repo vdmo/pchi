@@ -1,0 +1,15 @@
+[package]
+name = "pchi-schema"
+version = "0.1.0"
+edition = "2021"
+description = "PCHI v2.0 schema with PIR mathematical invariants for scene state management"
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+flatbuffers = "24.3"
+thiserror = "1.0"
+chrono = "0.4"
+
+[dev-dependencies]
+criterion = "0.5"

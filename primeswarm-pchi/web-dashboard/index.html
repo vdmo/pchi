@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PCHI Conductor Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0e27;
+            color: #e0e6ed;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background: linear-gradient(135deg, #1a1f3a 0%, #2d3a5f 100%);
+            padding: 20px 30px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            border: 1px solid #3a4a6f;
+        }
+
+        h1 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .subtitle {
+            color: #8b9bb4;
+            font-size: 14px;
+        }
+
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .status-connected {
+            background: rgba(76, 175, 80, 0.2);
+            color: #4caf50;
+            border: 1px solid #4caf50;
+        }
+
+        .status-disconnected {
+            background: rgba(244, 67, 54, 0.2);
+            color: #f44336;
+            border: 1px solid #f44336;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: currentColor;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            background: #1a1f3a;
+            border: 1px solid #3a4a6f;
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .card-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #e0e6ed;
+        }
+
+        .metric-value {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .metric-label {
+            color: #8b9bb4;
+            font-size: 13px;
+        }
+
+        .equilibrium-good {
+            color: #4caf50;
+        }
+
+        .equilibrium-bad {
+            color: #f44336;
+        }
+
+        .log-container {
+            background: #0d1117;
+            border: 1px solid #3a4a6f;
+            border-radius: 12px;
+            padding: 20px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .log-entry {
+            padding: 8px 0;
+            border-bottom: 1px solid #2a3a5f;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 12px;
+        }
+
+        .log-entry:last-child {
+            border-bottom: none;
+        }
+
+        .log-timestamp {
+            color: #8b9bb4;
+            margin-right: 10px;
+        }
+
+        .log-type {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            margin-right: 10px;
+        }
+
+        .log-info {
+            background: rgba(33, 150, 243, 0.2);
+            color: #2196f3;
+        }
+
+        .log-warn {
+            background: rgba(255, 152, 0, 0.2);
+            color: #ff9800;
+        }
+
+        .log-error {
+            background: rgba(244, 67, 54, 0.2);
+            color: #f44336;
+        }
+
+        .objects-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .object-item {
+            background: #2a3a5f;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+
+        .object-id {
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .object-position {
+            color: #8b9bb4;
+            font-size: 13px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #2196f3;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #1976d2;
+        }
+
+        .btn-secondary {
+            background: #3a4a6f;
+            color: #e0e6ed;
+        }
+
+        .btn-secondary:hover {
+            background: #4a5a7f;
+        }
+
+        .musical-context {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        .musical-item {
+            background: #2a3a5f;
+            padding: 10px;
+            border-radius: 8px;
+        }
+
+        .musical-label {
+            color: #8b9bb4;
+            font-size: 12px;
+            margin-bottom: 3px;
+        }
+
+        .musical-value {
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <h1>PCHI Conductor Dashboard</h1>
+                    <div class="subtitle">Scene State Management with PIR Mathematical Governance</div>
+                </div>
+                <div id="connectionStatus" class="status-indicator status-disconnected">
+                    <div class="status-dot"></div>
+                    <span>Disconnected</span>
+                </div>
+            </div>
+        </header>
+
+        <div class="controls">
+            <button class="btn btn-primary" onclick="connect()">Connect</button>
+            <button class="btn btn-secondary" onclick="disconnect()">Disconnect</button>
+            <button class="btn btn-secondary" onclick="clearLogs()">Clear Logs</button>
+        </div>
+
+        <div class="grid">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">Equilibrium Status</div>
+                </div>
+                <div id="equilibriumValue" class="metric-value equilibrium-good">0.000000</div>
+                <div class="metric-label">Residual (threshold: 1e-12)</div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">Connected Clients</div>
+                </div>
+                <div id="clientCount" class="metric-value">0</div>
+                <div class="metric-label">WebSocket connections</div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">Messages Processed</div>
+                </div>
+                <div id="messageCount" class="metric-value">0</div>
+                <div class="metric-label">Total PCHI messages</div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">Coherence Gap</div>
+                </div>
+                <div id="coherenceGap" class="metric-value">0.000</div>
+                <div class="metric-label">Scene coherence measure</div>
+            </div>
+        </div>
+
+        <div class="grid">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">Scene Objects</div>
+                </div>
+                <div id="objectsList" class="objects-list">
+                    <div style="color: #8b9bb4; text-align: center; padding: 20px;">
+                        No objects in scene
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">Musical Context</div>
+                </div>
+                <div id="musicalContext" class="musical-context">
+                    <div class="musical-item">
+                        <div class="musical-label">BPM</div>
+                        <div class="musical-value">--</div>
+                    </div>
+                    <div class="musical-item">
+                        <div class="musical-label">Beat</div>
+                        <div class="musical-value">--</div>
+                    </div>
+                    <div class="musical-item">
+                        <div class="musical-label">Kick</div>
+                        <div class="musical-value">--</div>
+                    </div>
+                    <div class="musical-item">
+                        <div class="musical-label">Snare</div>
+                        <div class="musical-value">--</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">Message Log</div>
+            </div>
+            <div id="logContainer" class="log-container">
+                <div class="log-entry">
+                    <span class="log-timestamp">--:--:--</span>
+                    <span class="log-type log-info">INFO</span>
+                    <span>Dashboard initialized. Click "Connect" to join PCHI Conductor.</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let ws = null;
+        let messageCount = 0;
+        let sceneState = {
+            objects: {},
+            musicalContext: null,
+            equilibrium: 0,
+            coherenceGap: 0
+        };
+
+        const WS_URL = 'ws://127.0.0.1:3000/ws';
+
+        function connect() {
+            if (ws) {
+                log('Already connected', 'warn');
+                return;
+            }
+
+            try {
+                ws = new WebSocket(WS_URL);
+                
+                ws.onopen = () => {
+                    updateConnectionStatus(true);
+                    log('Connected to PCHI Conductor', 'info');
+                    
+                    // Request initial state
+                    ws.send(JSON.stringify({ type: 'get_state' }));
+                };
+
+                ws.onmessage = (event) => {
+                    const data = JSON.parse(event.data);
+                    handleMessage(data);
+                };
+
+                ws.onerror = (error) => {
+                    log('WebSocket error: ' + error, 'error');
+                };
+
+                ws.onclose = () => {
+                    updateConnectionStatus(false);
+                    log('Disconnected from PCHI Conductor', 'warn');
+                    ws = null;
+                };
+            } catch (error) {
+                log('Failed to connect: ' + error.message, 'error');
+            }
+        }
+
+        function disconnect() {
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+        }
+
+        function handleMessage(data) {
+            messageCount++;
+            document.getElementById('messageCount').textContent = messageCount;
+
+            switch (data.type) {
+                case 'state_update':
+                    sceneState = data.state;
+                    updateDashboard();
+                    log('State updated', 'info');
+                    break;
+                case 'pchi_message':
+                    log(`PCHI message: ${data.message_type} from ${data.source_id}`, 'info');
+                    break;
+                case 'equilibrium_change':
+                    sceneState.equilibrium = data.residual;
+                    updateEquilibrium();
+                    log(`Equilibrium changed: ${data.residual}`, data.in_equilibrium ? 'info' : 'warn');
+                    break;
+                case 'client_count':
+                    document.getElementById('clientCount').textContent = data.count;
+                    break;
+                default:
+                    log(`Unknown message type: ${data.type}`, 'warn');
+            }
+        }
+
+        function updateDashboard() {
+            updateEquilibrium();
+            updateObjects();
+            updateMusicalContext();
+            document.getElementById('coherenceGap').textContent = sceneState.coherenceGap.toFixed(3);
+        }
+
+        function updateEquilibrium() {
+            const value = sceneState.equilibrium;
+            const element = document.getElementById('equilibriumValue');
+            element.textContent = value.toExponential(6);
+            
+            if (Math.abs(value) < 1e-12) {
+                element.className = 'metric-value equilibrium-good';
+            } else {
+                element.className = 'metric-value equilibrium-bad';
+            }
+        }
+
+        function updateObjects() {
+            const container = document.getElementById('objectsList');
+            const objects = sceneState.objects;
+
+            if (Object.keys(objects).length === 0) {
+                container.innerHTML = '<div style="color: #8b9bb4; text-align: center; padding: 20px;">No objects in scene</div>';
+                return;
+            }
+
+            container.innerHTML = '';
+            for (const [id, obj] of Object.entries(objects)) {
+                const div = document.createElement('div');
+                div.className = 'object-item';
+                div.innerHTML = `
+                    <div class="object-id">${id}</div>
+                    <div class="object-position">Position: [${obj.transform.join(', ')}]</div>
+                `;
+                container.appendChild(div);
+            }
+        }
+
+        function updateMusicalContext() {
+            const ctx = sceneState.musicalContext;
+            const container = document.getElementById('musicalContext');
+
+            if (!ctx) {
+                container.innerHTML = `
+                    <div class="musical-item"><div class="musical-label">BPM</div><div class="musical-value">--</div></div>
+                    <div class="musical-item"><div class="musical-label">Beat</div><div class="musical-value">--</div></div>
+                    <div class="musical-item"><div class="musical-label">Kick</div><div class="musical-value">--</div></div>
+                    <div class="musical-item"><div class="musical-label">Snare</div><div class="musical-value">--</div></div>
+                `;
+                return;
+            }
+
+            container.innerHTML = `
+                <div class="musical-item">
+                    <div class="musical-label">BPM</div>
+                    <div class="musical-value">${ctx.bpm}</div>
+                </div>
+                <div class="musical-item">
+                    <div class="musical-label">Beat</div>
+                    <div class="musical-value">${ctx.beat}</div>
+                </div>
+                <div class="musical-item">
+                    <div class="musical-label">Kick</div>
+                    <div class="musical-value">${ctx.kick ? 'ON' : 'OFF'}</div>
+                </div>
+                <div class="musical-item">
+                    <div class="musical-label">Snare</div>
+                    <div class="musical-value">${ctx.snare ? 'ON' : 'OFF'}</div>
+                </div>
+            `;
+        }
+
+        function updateConnectionStatus(connected) {
+            const element = document.getElementById('connectionStatus');
+            if (connected) {
+                element.className = 'status-indicator status-connected';
+                element.innerHTML = '<div class="status-dot"></div><span>Connected</span>';
+            } else {
+                element.className = 'status-indicator status-disconnected';
+                element.innerHTML = '<div class="status-dot"></div><span>Disconnected</span>';
+            }
+        }
+
+        function log(message, type = 'info') {
+            const container = document.getElementById('logContainer');
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            
+            const timestamp = new Date().toLocaleTimeString();
+            entry.innerHTML = `
+                <span class="log-timestamp">${timestamp}</span>
+                <span class="log-type log-${type}">${type.toUpperCase()}</span>
+                <span>${message}</span>
+            `;
+            
+            container.appendChild(entry);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function clearLogs() {
+            document.getElementById('logContainer').innerHTML = '';
+            log('Logs cleared', 'info');
+        }
+
+        // Auto-connect on load (optional)
+        // window.onload = connect;
+    </script>
+</body>
+</html>

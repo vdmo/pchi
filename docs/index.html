@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PCHI 2.0 Protocol | Mathematical Governance for Scene State</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=JetBrains+Mono:wght@400;700&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #050505; color: #f3f4f6; }
+        code, pre { font-family: 'JetBrains Mono', monospace !important; }
+        .gradient-text {
+            background: linear-gradient(135deg, #14b8a6, #8b5cf6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+        }
+        .nav-link { transition: color 0.2s; }
+        .nav-link:hover { color: #14b8a6; }
+    </style>
+</head>
+<body class="antialiased selection:bg-teal-500 selection:text-white">
+
+    <!-- Navigation -->
+    <nav class="fixed w-full z-50 glass-panel border-b-0 border-white/10 transition-all duration-300">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex-shrink-0 flex items-center">
+                    <span class="text-2xl font-bold tracking-tighter gradient-text">PCHI 2.0</span>
+                </div>
+                <div class="hidden md:flex space-x-8">
+                    <a href="#features" class="nav-link text-sm font-medium text-gray-300">Features</a>
+                    <a href="docs.html" class="nav-link text-sm font-medium text-gray-300">Documentation</a>
+                    <a href="#projects" class="nav-link text-sm font-medium text-gray-300">Projects & Downloads</a>
+                    <a href="https://github.com/primeswarm" target="_blank" class="bg-white/10 hover:bg-white/20 px-4 py-2 rounded-md text-sm font-medium transition-colors border border-white/10">GitHub</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden">
+        <div class="absolute inset-0 z-0">
+            <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-teal-900/20 via-[#050505] to-[#050505]"></div>
+        </div>
+        <div class="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h1 class="text-5xl md:text-7xl font-extrabold tracking-tight mb-6">
+                Mathematical Governance<br>
+                <span class="gradient-text">For Scene State</span>
+            </h1>
+            <p class="mt-4 max-w-2xl text-xl text-gray-400 mx-auto mb-10">
+                PCHI (Peachy) protocol v2.0 introduces PIR mathematical invariants enabling verified scene state management across distributed creative systems. Say goodbye to state drift.
+            </p>
+            <div class="flex justify-center gap-4">
+                <a href="#projects" class="bg-teal-500 hover:bg-teal-600 text-black font-semibold px-8 py-3 rounded-lg transition-colors shadow-[0_0_20px_rgba(20,184,166,0.3)]">
+                    Get Started
+                </a>
+                <a href="docs.html" class="glass-panel hover:bg-white/5 text-white font-medium px-8 py-3 rounded-lg transition-colors">
+                    Read the Docs
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" class="py-20 border-t border-white/5 bg-[#0a0a0a]">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl font-bold gradient-text mb-4">Why PCHI 2.0?</h2>
+                <p class="text-gray-400 max-w-2xl mx-auto">Moving from convention-based to mathematics-based scene management.</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <!-- Feature 1 -->
+                <div class="glass-panel p-8 rounded-2xl hover:-translate-y-1 transition-transform duration-300">
+                    <div class="w-12 h-12 bg-teal-500/20 rounded-lg flex items-center justify-center mb-6 border border-teal-500/30">
+                        <svg class="w-6 h-6 text-teal-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3 text-white">Mathematical Integrity</h3>
+                    <p class="text-gray-400 text-sm leading-relaxed">
+                        Every message carries PIR invariants (Prouhet-Thue-Morse sequence) that mathematically prove the scene is in equilibrium. Disequilibrium is caught instantly before rendering.
+                    </p>
+                </div>
+                <!-- Feature 2 -->
+                <div class="glass-panel p-8 rounded-2xl hover:-translate-y-1 transition-transform duration-300">
+                    <div class="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center mb-6 border border-purple-500/30">
+                        <svg class="w-6 h-6 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3 text-white">Safe AI Integration</h3>
+                    <p class="text-gray-400 text-sm leading-relaxed">
+                        AI agents can be safely deployed in live shows. Using the <span class="text-purple-300">Only-Lang</span> rule engine, mathematical boundaries are strictly enforced for all agent behaviors.
+                    </p>
+                </div>
+                <!-- Feature 3 -->
+                <div class="glass-panel p-8 rounded-2xl hover:-translate-y-1 transition-transform duration-300">
+                    <div class="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center mb-6 border border-blue-500/30">
+                        <svg class="w-6 h-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3 text-white">Zero-Drift Sync</h3>
+                    <p class="text-gray-400 text-sm leading-relaxed">
+                        The PCHI Conductor maintains a single source of truth for Resolume, TouchDesigner, Ableton, and Unreal. All tools receive the same verified state via UDP, WebSocket, or TCP.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Documentation & Code Snippets Section -->
+    <section id="docs" class="py-20 border-t border-white/5 relative overflow-hidden">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+                <div>
+                    <h2 class="text-3xl font-bold mb-6">How it works</h2>
+                    <div class="prose prose-invert prose-teal">
+                        <p class="text-gray-400 mb-4">
+                            PCHI standardizes the message format for scene updates, control parameters, and musical contexts. Every message includes its mathematical signature.
+                        </p>
+                        <ul class="space-y-4 text-gray-300 mb-8 list-disc list-inside">
+                            <li><strong>Standardized Schema:</strong> Common format for objects, parameters, artists, and music.</li>
+                            <li><strong>PIR Invariants:</strong> Equilibrium checks, coherence gaps, curvature signatures.</li>
+                            <li><strong>Multiple Serializations:</strong> JSON (human-readable) & FlatBuffers (high-performance binary).</li>
+                            <li><strong>Only-Lang Governance:</strong> Rule definition DSL to keep generative AI output safe and harmonious.</li>
+                        </ul>
+                    </div>
+                    <a href="docs.html" class="text-teal-400 hover:text-teal-300 font-medium inline-flex items-center transition-colors">
+                        Read full API Documentation 
+                        <svg class="w-4 h-4 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                    </a>
+                </div>
+                
+                <div class="glass-panel rounded-xl overflow-hidden shadow-2xl">
+                    <div class="flex items-center px-4 py-2 border-b border-white/10 bg-white/5">
+                        <div class="flex space-x-2">
+                            <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                            <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                        </div>
+                        <div class="ml-4 text-xs font-mono text-gray-400">pchi-v2.0-schema.json (Payload Example)</div>
+                    </div>
+                    <pre class="m-0 !bg-[#0a0a0a] !p-6 text-sm"><code class="language-json">{
+  "type": "state_update",
+  "state": {
+    "objects": {
+      "kraken_tentacle_1": {
+        "transform": [1.0, 2.0, 3.0]
+      }
+    },
+    "musical_context": {
+      "bpm": 128.0,
+      "beat": 16,
+      "kick": true
+    }
+  },
+  "pirInvariants": {
+    "equilibriumCheck": {
+      "residual": 0.000000000001,
+      "signSequence": [1, -1, -1, 1]
+    },
+    "coherenceGap": 0.0,
+    "curvatureSignature": "0.0, 0.0, 0.0"
+  }
+}</code></pre>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Projects & Downloads Section -->
+    <section id="projects" class="py-20 border-t border-white/5 bg-[#050505]">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl font-bold mb-4">Projects & Downloads</h2>
+                <p class="text-gray-400 max-w-2xl mx-auto">Explore the tools built on top of the PCHI 2.0 protocol ecosystem.</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- PCHI Conductor -->
+                <div class="glass-panel p-8 rounded-2xl flex flex-col h-full border-t-2 border-t-teal-500 md:col-span-2 lg:col-span-1">
+                    <div class="flex justify-between items-start mb-4">
+                        <h3 class="text-2xl font-bold text-white">PrimeSwarm Engine (Conductor)</h3>
+                        <span class="bg-teal-500/20 text-teal-400 text-xs px-2 py-1 rounded font-mono">Rust</span>
+                    </div>
+                    <p class="text-gray-400 text-sm mb-6 flex-grow">
+                        The central state management server. Validates every message with PIR invariants, enforces Only-Lang rules, and broadcasts coherent state to all receivers. Includes a built-in web dashboard.
+                    </p>
+                    <div class="bg-black/50 p-4 rounded-lg font-mono text-sm text-gray-300 mb-4 border border-white/5">
+                        <span class="text-gray-500">$</span> cargo run -p primeswarm-pchi
+                    </div>
+                    <div class="flex gap-3 mt-auto">
+                        <a href="/primeswarm-engine/primeswarm-pchi" class="text-sm bg-white/10 hover:bg-white/20 px-4 py-2 rounded transition-colors text-white text-center w-full">View Source</a>
+                    </div>
+                </div>
+
+                <!-- PCHI Schema -->
+                <div class="glass-panel p-8 rounded-2xl flex flex-col h-full border-t-2 border-t-blue-500 md:col-span-2 lg:col-span-1">
+                    <div class="flex justify-between items-start mb-4">
+                        <h3 class="text-2xl font-bold text-white">PCHI Schema Defs</h3>
+                        <div class="flex gap-2 flex-wrap">
+                            <span class="bg-blue-500/20 text-blue-400 text-xs px-2 py-1 rounded font-mono">JSON</span>
+                            <span class="bg-orange-500/20 text-orange-400 text-xs px-2 py-1 rounded font-mono">FlatBuffers</span>
+                        </div>
+                    </div>
+                    <p class="text-gray-400 text-sm mb-6 flex-grow">
+                        The core protocol schemas, JSON validation configurations, and Rust implementation library with invariant math modules.
+                    </p>
+                    <div class="flex flex-col gap-3 mt-auto">
+                        <a href="/prime-market/pchi-schema/pchi-v2.0-schema.json" download class="text-sm bg-white/10 hover:bg-white/20 px-4 py-2 rounded transition-colors text-white text-center w-full">Download JSON Schema</a>
+                        <a href="/prime-market/pchi-schema/pchi.fbs" download class="text-sm bg-white/10 hover:bg-white/20 px-4 py-2 rounded transition-colors text-white text-center w-full">Download FlatBuffers</a>
+                    </div>
+                </div>
+
+                <!-- Resolume Bridge -->
+                <div class="glass-panel p-8 rounded-2xl flex flex-col h-full border-t-2 border-t-pink-500">
+                    <div class="flex justify-between items-start mb-4">
+                        <h3 class="text-2xl font-bold text-white">Resolume PCHI Bridge</h3>
+                        <span class="bg-pink-500/20 text-pink-400 text-xs px-2 py-1 rounded font-mono">Python / OSC</span>
+                    </div>
+                    <p class="text-gray-400 text-sm mb-6 flex-grow">
+                        Connects Resolume Arena to the PCHI Conductor via OSC. Converts standard OSC to PCHI with calculated PIR invariants (equilibrium, coherence gap) and handles real-time visual streaming constraints.
+                    </p>
+                    <div class="bg-black/50 p-4 rounded-lg font-mono text-xs text-gray-300 mb-4 border border-white/5 overflow-hidden">
+                        python resolume_pchi_bridge.py<br>
+                        --resolume-port 7000 --pchi-port 8888
+                    </div>
+                    <div class="flex gap-3 mt-auto">
+                        <a href="/tools/resolume-pchi-bridge/resolume_pchi_bridge.py" download class="text-sm bg-pink-600 hover:bg-pink-500 px-4 py-2 rounded transition-colors text-white text-center w-full">Download Script (.py)</a>
+                    </div>
+                </div>
+
+                <!-- Ableton Max Device -->
+                <div class="glass-panel p-8 rounded-2xl flex flex-col h-full border-t-2 border-t-yellow-500">
+                    <div class="flex justify-between items-start mb-4">
+                        <h3 class="text-2xl font-bold text-white">Ableton PCHI Max</h3>
+                        <span class="bg-yellow-500/20 text-yellow-400 text-xs px-2 py-1 rounded font-mono">Max for Live</span>
+                    </div>
+                    <p class="text-gray-400 text-sm mb-6 flex-grow">
+                        A Max for Live device that monitors Ableton's musical state (BPM, beat, clips, kick/snare detection). Calculates equilibrium from the musical state and routes messages directly to the conductor.
+                    </p>
+                    <div class="bg-black/50 p-4 rounded-lg font-mono text-xs text-gray-300 mb-4 border border-white/5 overflow-hidden">
+                        Host: 127.0.0.1<br>
+                        Port: 8888
+                    </div>
+                    <div class="flex gap-3 mt-auto">
+                        <a href="/tools/ableton-pchi-max/pchi_sender.maxpat" download class="text-sm bg-yellow-600 hover:bg-yellow-500 px-4 py-2 rounded transition-colors text-white text-center w-full">Download Device (.maxpat)</a>
+                    </div>
+                </div>
+
+                <!-- TouchDesigner CHOP -->
+                <div class="glass-panel p-8 rounded-2xl flex flex-col h-full border-t-2 border-t-purple-500 md:col-span-2 lg:col-span-1">
+                    <div class="flex justify-between items-start mb-4">
+                        <h3 class="text-2xl font-bold text-white">TouchDesigner CHOP</h3>
+                        <span class="bg-purple-500/20 text-purple-400 text-xs px-2 py-1 rounded font-mono">Python / TD</span>
+                    </div>
+                    <p class="text-gray-400 text-sm mb-6 flex-grow">
+                        A custom Python CHOP that connects to the PCHI Conductor via UDP. Receives PCHI messages and outputs scene state, musical context, and PIR equilibrium status directly as CHOP channels.
+                    </p>
+                    <div class="bg-black/50 p-4 rounded-lg font-mono text-xs text-gray-300 mb-4 border border-white/5 overflow-hidden">
+                        <span class="text-purple-400">import</span> json<br>
+                        <span class="text-gray-500"># Extracts objects & beats as channels</span>
+                    </div>
+                    <div class="flex gap-3 mt-auto">
+                        <a href="/tools/touchdesigner-pchi-chop/pchi_receiver_chop.py" download class="text-sm bg-purple-600 hover:bg-purple-500 px-4 py-2 rounded transition-colors text-white text-center w-full">Download Script (.py)</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="border-t border-white/10 py-12 bg-[#050505]">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <span class="text-2xl font-bold tracking-tighter gradient-text opacity-50 block mb-4">PCHI</span>
+            <p class="text-gray-600 text-sm">
+                Part of the PIR / PrimeSwarm research monorepo.<br>
+                Open Source Protocol for Live Creative Systems.
+            </p>
+        </div>
+    </footer>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-rust.min.js"></script>
+    <script>
+        // Simple script for nav background on scroll
+        window.addEventListener('scroll', () => {
+            const nav = document.querySelector('nav');
+            if (window.scrollY > 50) {
+                nav.classList.add('bg-[#050505]/80', 'shadow-lg');
+                nav.classList.remove('border-b-0');
+            } else {
+                nav.classList.remove('bg-[#050505]/80', 'shadow-lg');
+                nav.classList.add('border-b-0');
+            }
+        });
+    </script>
+</body>
+</html>

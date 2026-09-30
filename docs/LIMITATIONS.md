@@ -87,49 +87,53 @@ conductor's current behavior.
 **Not yet built:** a FlatBuffers encode/decode path actually wired into
 `conductor.rs`'s message handling.
 
-## 7. A Single Bridge Update's Equilibrium Check Passes or Fails Arbitrarily
+## 7. [Fixed] A Single Bridge Update's Equilibrium Check Used to Pass or Fail Arbitrarily
 
-`message.validate()` (`pchi-schema/src/validation.rs`) rejects a message
-outright if its own self-reported `pir_invariants.residual` exceeds
-`1e-12` — before the conductor ever applies the state change. The
-Resolume bridge (`tools/resolume-pchi-bridge`) computes that residual as
-a Prouhet-Thue-Morse-signed sum over its last 1–4 recently-set parameter
-values (`create_pchi_message`'s `values = list(self.state.values())[-4:]`).
+**Status: fixed.** `message.validate()` (`pchi-schema/src/validation.rs`)
+used to reject *every* message outright if its own self-reported
+`pir_invariants.residual` exceeded `1e-12` — including `ControlParameter`,
+`Heartbeat`, `MusicalContext` and `ArtistTracking` messages, which report
+one independent fact and never carried a genuine multi-value invariant to
+begin with. The Resolume bridge computed that residual as a
+Prouhet-Thue-Morse-signed sum over its last 1–4 recently-set parameter
+values — a number with no real meaning for unrelated values — so a
+single layer's opacity change (one value, signs `[1]`) always failed,
+and matched multi-value updates passed or failed depending purely on
+which arbitrary window a given message happened to land on at send
+time, not on whether the change was safe.
 
-Tested live against a real conductor: a single layer's opacity change
-(one value, signs `[1]`) always fails — a lone nonzero value can never
-sum to zero. Four different layers set to the *same* value in sequence
-sometimes passed and sometimes didn't, depending on which arbitrary
-1–4-value window each individual message happened to compute against at
-send time — not on whether the change was safe or harmonious in any
-real sense. A rejected message's state change is **never applied**
-(`process_message`'s `message.validate()?` returns before the match
-block runs), so this isn't just a logged warning — it's a silently
-dropped update from the caller's point of view (the bridge's OSC
-handler has no failure feedback path back to Resolume).
+**The fix:** `validate_invariants` now only checks residual/coherence-gap
+against `SceneUpdate` messages — the one payload shape that can
+genuinely carry multiple related object states a sender constructed to
+balance, which is what an "equilibrium" claim actually means. Every
+other message type is no longer gated on it. This isn't a loosened
+check; it's a correctly-scoped one: the conductor already has the real
+mechanism for tracking equilibrium across a sequence of independent
+updates — it recomputes actual aggregate equilibrium from the real
+accumulated scene state after every message
+(`SceneState::update_equilibrium_status`), and the shipped default rule
+file already acts on that real value (`if equilibrium > 1e-12 then
+escalate(...)` in `kraken-tentacle.only-pchi`). The message-level gate
+was duplicating that check, badly, over data that was never a valid
+invariant claim in the first place.
 
-**What this means:** the "Zero-Drift Sync" claim does not hold for
-generic Resolume/TouchDesigner/Ableton parameter changes as this bridge
-computes equilibrium today — most single-parameter updates will be
-dropped, essentially at random, by a check that was designed around
-deliberately-paired values (the Kraken tentacle example, where
-wobbliness values are constructed in matched pairs specifically so the
-signed sum cancels), not around arbitrary incoming state.
+Verified live: the exact scenario that used to always fail (a single
+layer's opacity change) and the exact scenario that used to pass or fail
+essentially at random (11 real control-parameter updates across mixed
+parameters) — 25/25 applied, 0 dropped, after the fix, run against the
+same real conductor and bridge. `SceneUpdate`'s equilibrium check is
+still enforced (regression-tested in
+`pchi-schema/src/validation.rs::scene_update_still_rejects_a_real_equilibrium_violation`).
 
-**Not fixed here:** loosening or redesigning the equilibrium check is a
-real design decision (what should "harmonious" mean for an arbitrary
-single-parameter change?), not a bug fix — it needs an answer from
-whoever owns the PIR-invariant design, not a guess. **Fixed in the
-Resolume bridge itself:** two independent bugs that meant *no* message —
-passing or failing this check — ever reached the conductor before this
-change: `message_type`/`payload_type` were serialized under their
-Python field names instead of the wire names (`type`/`payloadType`) the
-schema's `#[serde(rename = ...)]` actually requires, and messages were
-sent OSC-wrapped (`osc_client.send_message`) rather than as raw
+**Also fixed, previously:** two independent bugs that meant *no*
+message — passing or failing this check — ever reached the conductor
+before that fix: `message_type`/`payload_type` were serialized under
+their Python field names instead of the wire names (`type`/`payloadType`)
+the schema's `#[serde(rename = ...)]` actually requires, and messages
+were sent OSC-wrapped (`osc_client.send_message`) rather than as raw
 JSON-over-UDP, which is the only format the conductor's receive loop
 parses. Heartbeats additionally omitted `pir_invariants` and `payload`
-entirely, both required fields with no `#[serde(default)]` — every
-heartbeat this bridge sent was rejected as unparseable before this fix.
+entirely, both required fields with no `#[serde(default)]`.
 
 ## 8. Governance-Event Messages From Other Conductors Are Logged, Not Re-Verified
 

@@ -14,7 +14,6 @@ import time
 import threading
 from typing import Dict, Any, Optional
 from dataclasses import dataclass
-from pythonosc import udp_client
 from pythonosc.dispatcher import Dispatcher
 from pythonosc.osc_server import BlockingOSCUDPServer
 import numpy as np
@@ -22,7 +21,18 @@ import numpy as np
 
 @dataclass
 class PCHIMessage:
-    """PCHI v2.0 message structure"""
+    """PCHI v2.0 message structure.
+
+    Field names here are Python-conventional (snake_case); the real wire
+    format (pchi-schema/src/lib.rs) renames two of them —
+    `#[serde(rename = "type")]` on message_type, and the Payload enum's
+    `#[serde(tag = "payloadType", content = "data")]`. Before this fix,
+    this dataclass was serialized with `json.dumps(message.__dict__)`,
+    which sends the Python field names verbatim (`message_type`,
+    `payload_type`) — the conductor's `serde_json::from_slice::<PCHIMessage>`
+    rejects that with "missing field `type`" every time. to_wire_dict()
+    is the one place that maps Python-side names to actual wire names.
+    """
     version: str = "2.0.0"
     message_type: str = "control_parameter"
     source_id: str = "resolume_bridge"
@@ -37,6 +47,20 @@ class PCHIMessage:
             self.pir_invariants = {}
         if self.payload is None:
             self.payload = {}
+
+    def to_wire_dict(self) -> Dict[str, Any]:
+        """The actual JSON shape primeswarm-pchi's conductor accepts."""
+        payload = dict(self.payload)
+        if "payload_type" in payload:
+            payload["payloadType"] = payload.pop("payload_type")
+        return {
+            "version": self.version,
+            "type": self.message_type,
+            "source_id": self.source_id,
+            "timestamp": self.timestamp,
+            "pir_invariants": self.pir_invariants,
+            "payload": payload,
+        }
 
 
 class PIRCalculator:
@@ -101,12 +125,16 @@ class ResolumePCHIBridge:
         self.state: Dict[str, Any] = {}
         self.running = False
         
-        # OSC client for sending to PCHI Conductor
-        self.osc_client = udp_client.SimpleUDPClient(
-            pchi_conductor_host, 
-            pchi_conductor_port
-        )
-        
+        # Plain UDP socket to the PCHI Conductor. Previously this used an
+        # OSC client (self.osc_client.send_message("/pchi/message", ...)),
+        # which wraps the JSON payload in OSC's own binary framing (address
+        # pattern + type tags + argument encoding) — bytes the conductor's
+        # `serde_json::from_slice::<PCHIMessage>` cannot parse as JSON at
+        # all, since it reads the raw UDP payload directly. The conductor
+        # has no OSC decoder; this bridge is the OSC-to-PCHI translation
+        # point, and needs to actually stop speaking OSC on the PCHI side.
+        self.pchi_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
         print(f"Resolume PCHI Bridge initialized")
         print(f"  Listening for Resolume OSC on port {resolume_listen_port}")
         print(f"  Sending PCHI to {pchi_conductor_host}:{pchi_conductor_port}")
@@ -184,21 +212,55 @@ class ResolumePCHIBridge:
         )
     
     def send_pchi_message(self, message: PCHIMessage):
-        """Send PCHI message to conductor via OSC"""
+        """Send PCHI message to the conductor as raw JSON over UDP —
+        the actual wire format primeswarm-pchi's receive loop parses."""
         try:
-            # Convert to JSON and send as OSC string
-            message_json = json.dumps(message.__dict__)
-            self.osc_client.send_message("/pchi/message", message_json)
+            message_bytes = json.dumps(message.to_wire_dict()).encode("utf-8")
+            self.pchi_socket.sendto(
+                message_bytes, (self.pchi_conductor_host, self.pchi_conductor_port)
+            )
         except Exception as e:
             print(f"Error sending PCHI message: {e}")
     
     def send_heartbeat(self):
-        """Send periodic heartbeat to PCHI Conductor"""
+        """Send periodic heartbeat to PCHI Conductor.
+
+        PCHIMessage() defaults pir_invariants to {} — the Rust PIRInvariants
+        struct has no #[serde(default)] on any field, so an empty object was
+        rejected outright ("missing field `equilibrium_check`") before every
+        actual heartbeat this bridge sent. A heartbeat has no scene values to
+        check equilibrium over, so a trivially-in-equilibrium zero state
+        (matching what PIRCalculator.calculate_equilibrium([]) already
+        returns for the empty case) is the honest thing to send, not a
+        fabricated non-zero reading.
+        """
         while self.running:
             try:
                 heartbeat = PCHIMessage(
                     message_type="heartbeat",
-                    source_id="resolume_bridge"
+                    source_id="resolume_bridge",
+                    pir_invariants={
+                        "equilibrium_check": self.pir_calculator.calculate_equilibrium([]),
+                        "coherence_gap": 0.0,
+                        "curvature_signature": "0.0, 0.0, 0.0",
+                        "residual": 0.0,
+                    },
+                    # payload is a required, tagged field on the wire
+                    # (pchi_schema::Payload) with no dedicated heartbeat
+                    # variant — every message, heartbeats included, must
+                    # carry a structurally valid payload. The conductor
+                    # ignores payload content for MessageType::Heartbeat
+                    # (conductor.rs only logs source_id), so this value is
+                    # inert, but it has to be *some* real Payload variant.
+                    # See docs/LIMITATIONS.md.
+                    payload={
+                        "payload_type": "control_parameter",
+                        "data": {
+                            "target_id": "resolume_bridge",
+                            "parameter": "heartbeat",
+                            "value": 1.0,
+                        },
+                    },
                 )
                 self.send_pchi_message(heartbeat)
                 time.sleep(5)  # Heartbeat every 5 seconds

@@ -2,7 +2,6 @@
 
 use primeswarm_pchi::{PCHIConductor, WebServerState, create_router};
 use pchi_schema::{PCHIMessage, MessageType, Payload, ControlParameterData};
-use tracing_subscriber;
 use std::sync::Arc;
 
 #[tokio::main]

@@ -84,8 +84,7 @@ validate_message_with_config(&message, &config)?;
 ## Building
 
 ```bash
-cd prime-market
-cargo build -p pchi-schema
+cargo build -p pchi-schema   # from the repo root — this crate is a workspace member
 cargo test -p pchi-schema
 ```
 

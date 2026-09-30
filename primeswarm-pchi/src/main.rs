@@ -20,10 +20,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Transport layer started on UDP 127.0.0.1:8888");
     println!("WebSocket server started on ws://127.0.0.1:8889");
     
-    // Create web server state (only needs scene state arc)
+    // Create web server state
     let web_state = WebServerState {
         scene_state: conductor.get_state_arc(),
+        governance: Some(conductor.get_governance_arc()),
     };
+    println!(
+        "Governance log verifying_key: {}",
+        conductor.get_governance_arc().verifying_key_hex()
+    );
     
     // Create web server router
     let app = create_router(web_state);
@@ -51,24 +56,31 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Ok(_) => println!("Message processed successfully"),
         Err(e) => println!("Error processing message: {}", e),
     }
-    
+
     // Get current state
     let state = conductor.get_state().await;
     println!("Current equilibrium status: {:?}", state.equilibrium_status);
-    
+
+    // Feed real incoming UDP traffic into process_message. Until this ran,
+    // start_transport only opened the socket — nothing a bridge sent to it
+    // was ever validated or governed. Needs Arc<PCHIConductor> since the
+    // loop runs in its own task alongside the web server.
+    let conductor = Arc::new(conductor);
+    let udp_handle = tokio::spawn(conductor.clone().run_udp_receive_loop());
+    println!("Governing incoming UDP traffic on 127.0.0.1:8888");
+
     println!("PCHI Conductor running. Press Ctrl+C to stop.");
-    
+
     // Wait for shutdown signal
     tokio::signal::ctrl_c().await?;
     println!("Shutting down...");
-    
-    // Stop background tasks
+
+    // Stop background tasks (dropping the process closes the sockets;
+    // stop_transport needs &mut self, which the Arc above gave up)
     web_handle.abort();
-    
-    // Stop transport
-    conductor.stop_transport().await?;
-    
+    udp_handle.abort();
+
     println!("PCHI Conductor stopped");
-    
+
     Ok(())
 }

@@ -35,17 +35,16 @@ PCHI (Peachy) v2.0 is a scene state protocol with embedded PIR (Prime Integer Re
 
 **The Problem**: AI agents are powerful but dangerous in live environments. They can make decisions that break visual coherence, violate artistic intent, or create unsafe conditions (e.g., blinding strobe lights).
 
-**The PCHI Solution**: Only-Lang rules define mathematical boundaries for AI behavior:
+**The PCHI Solution**: Only-Lang rules (`.only-pchi` files, parsed and evaluated by `primeswarm-pchi/src/only_lang.rs` — real code, not a description) define mathematical boundaries for AI behavior:
 ```
-if kraken_tentacle.wobbliness > 0.8
-then
-    kraken_tentacle.wobbliness = 0.8
+if tentacle_system.total_curl > 4.0 then
+    deny("Tentacle curl exceeds harmonic threshold")
 end
 ```
 
-The PCHI Conductor enforces these rules before any AI-generated state change is applied.
+The PCHI Conductor evaluates these against every incoming message *before* applying it — real end-to-end, tested against the live UDP transport, not just the sample message at startup — and signs and hash-chains every rule that fires into a governance log (`primeswarm-pchi/src/governance.rs`), independently verifiable offline with `scripts/verify_governance_chain.py`.
 
-**Impact**: **AI agents can be safely deployed** in live shows with mathematical guarantees they won't break artistic constraints or safety limits.
+**Impact**: **AI agents can be safely deployed** in live shows with mathematical guarantees they won't break safety limits, *and a third party can independently confirm the enforcement actually happened* — not just take the operator's word for it. See `docs/LIMITATIONS.md` for what this does and doesn't yet cover (the rule grammar is a documented subset, not the full grammar in `pchi-schema/examples/kraken-rules.only`; a single conductor's log, not a multi-instance one).
 
 ---
 
@@ -152,13 +151,15 @@ The PCHI Conductor enforces these rules before any AI-generated state change is 
 
 **Example**: A corporate event experiences a visual glitch. Analysis of PCHI logs shows the system was in equilibrium, proving the glitch was external (e.g., hardware failure) not software corruption.
 
-#### 2. Regulatory Compliance for AI-Governed Shows
+#### 2. Compliance Evidence for AI-Governed Shows
 
 **Before**: AI in live shows has no regulatory framework. No way to prove AI decisions were safe.
 
-**With PCHI**: DGV (Digital Governance Verification) integration provides mathematical proof that AI decisions respected all constraints. Regulatory bodies can verify compliance.
+**With PCHI**: Every rule evaluation is signed (Ed25519) and hash-chained into an append-only log, in the same pattern the DGV project (`only-dgv-verifier`) uses for tool-call authorization — this is a real, tested implementation as of the receipt-signing work in `primeswarm-pchi/src/governance.rs`, not a planned integration. `GET /governance/export` returns the batch; `scripts/verify_governance_chain.py` re-derives every hash, checks every signature, and confirms chain contiguity, with no network access and no need to trust the conductor is still running. A regulator or insurer runs the same script and reaches the same answer independently.
 
-**Example**: A stadium show uses AI for lighting control. PCHI + DGV provides evidence that the AI never exceeded safety limits (e.g., strobe intensity, beam angles).
+**What this does not yet claim**: no third-party legal or regulatory body has reviewed or accepted this as compliance evidence; "provides evidence an insurer or regulator could independently verify" is the accurate claim, not "is accepted by regulators." Distributed/multi-conductor deployments (per-venue chains reconciled centrally) are not built — see `docs/LIMITATIONS.md`.
+
+**Example**: A stadium show uses AI for lighting control, governed by a strobe-intensity rule. If it fires, the resulting DENY is signed and chained; a safety auditor exports the log after the show and independently confirms every fired rule and its outcome, without trusting the venue's own report of what happened.
 
 #### 3. Distributed Multi-Venue Shows
 
@@ -236,7 +237,7 @@ The PCHI Conductor enforces these rules before any AI-generated state change is 
 1. **Deploy PCHI Conductor**: Run in cloud or on-premise
 2. **Integrate Tools**: Use bridges or build custom PCHI clients
 3. **Define Governance**: Write Only-Lang rules for safety and compliance
-4. **Enable DGV Verification**: Integrate with DGV for regulatory compliance
+4. **Export and Verify**: `GET /governance/export`, then `scripts/verify_governance_chain.py` — independent proof of what was enforced, for an insurer, regulator, or your own audit trail
 
 ---
 

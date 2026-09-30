@@ -1,0 +1,37 @@
+# Kraken Tentacle Scene — Only-Lang rules, real subset
+# PCHI v2.0 + PIR Mathematical Governance
+#
+# This is the fully-parseable rewrite of kraken-rules.only, expressed in
+# the documented subset primeswarm-pchi's parser (src/only_lang.rs)
+# actually supports today: no `for` loops, no `sum(...)` comprehensions.
+# It is the direct equivalent of what used to be hardcoded as Rust structs
+# in RuleEngine::load_default_rules() — now real, loadable, parsed text.
+#
+# kraken-rules.only remains as the illustrative target syntax for the
+# richer grammar (loops, comprehensions) this parser doesn't cover yet.
+
+harmony(1e-12)
+
+if equilibrium > 1e-12 then
+    escalate("Tentacle wobbliness violates equilibrium")
+end
+
+if tentacle_system.total_curl > 4.0 then
+    deny("Tentacle curl exceeds harmonic threshold")
+end
+
+if tentacle_system.animation_speed > 2.0 then
+    deny("Animation speed exceeds safety limit")
+end
+
+if scene_state.coherence_gap > 0.5 then
+    escalate("Scene coherence gap too large")
+end
+
+if musical_context.bpm > 120.0 and musical_context.kick == true then
+    evolve(kraken_main, peak_state)
+end
+
+if artist_tracking.position.z < 0.0 then
+    evolve(kraken_main, defensive_posture)
+end

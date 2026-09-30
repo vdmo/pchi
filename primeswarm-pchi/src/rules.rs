@@ -51,18 +51,27 @@ impl RuleEngine {
     }
 
     /// Evaluate every rule against the current state. For each rule whose
-    /// condition is true, records a signed receipt in `gov` and returns a
-    /// `GovernanceEvent` PCHI message for the conductor to broadcast. A
-    /// `deny` action also short-circuits the whole evaluation with
-    /// `ConductorError::RuleError` — same fail-closed semantics the
-    /// original hardcoded engine had — but only after every fired rule up
-    /// to that point has already been signed and persisted, so a denial is
-    /// never lost from the chain.
+    /// condition is true, records a signed receipt in `gov` and builds a
+    /// `GovernanceEvent` PCHI message for the conductor to broadcast.
+    ///
+    /// Returns `(events, deny_reason)` rather than using `Err` for a deny.
+    /// An earlier version returned `Err(ConductorError::RuleError(msg))`
+    /// directly from here, which discarded the already-built `events` —
+    /// every governance event from an evaluation that included a DENY was
+    /// silently never broadcast, only ever signed into the log. Caught by
+    /// `conductor::tests::governance_events_actually_reach_a_connected_ws_client`,
+    /// which connects a real WebSocket client and asserts it actually
+    /// receives the event — the DENY was correctly in the chain the whole
+    /// time (verifiable via `/governance/export`), just never live.
+    /// `process_message` broadcasts every event first, then turns
+    /// `deny_reason` into the `Err` it returns to its own caller — so a
+    /// denial is still never silently treated as success, and is now also
+    /// never silently dropped from telemetry.
     pub fn evaluate(
         &self,
         state: &SceneState,
         gov: &GovernanceLog,
-    ) -> Result<Vec<PCHIMessage>, ConductorError> {
+    ) -> Result<(Vec<PCHIMessage>, Option<String>), ConductorError> {
         let state_snapshot_hash = snapshot_hash(state);
         let mut events = Vec::new();
         let mut deny: Option<String> = None;
@@ -109,10 +118,7 @@ impl RuleEngine {
             }
         }
 
-        if let Some(msg) = deny {
-            return Err(ConductorError::RuleError(msg));
-        }
-        Ok(events)
+        Ok((events, deny))
     }
 }
 
@@ -171,8 +177,13 @@ mod tests {
         let mut state = SceneState::new();
         state.set_control_parameter("tentacle_system.total_curl".to_string(), 10.0);
 
-        let result = engine.evaluate(&state, &gov);
-        assert!(result.is_err(), "curl over threshold should deny");
+        let (events, deny_reason) = engine.evaluate(&state, &gov).unwrap();
+        assert!(deny_reason.is_some(), "curl over threshold should deny");
+        assert!(
+            events.iter().any(|e| matches!(&e.payload,
+                pchi_schema::Payload::GovernanceEvent(d) if d.gate_state == "DENY")),
+            "the DENY must still be in the returned events, not just the deny_reason"
+        );
 
         let export = gov.export();
         let receipts = export["receipts"].as_array().unwrap();
@@ -205,9 +216,8 @@ mod tests {
         // Should not error: no curl/animation_speed/coherence_gap set, so
         // only the equilibrium check (Unknown -> false, doesn't fire) and
         // the bpm/kick evolve rule fire.
-        let result = engine.evaluate(&state, &gov);
-        assert!(result.is_ok());
-        let events = result.unwrap();
+        let (events, deny_reason) = engine.evaluate(&state, &gov).unwrap();
+        assert!(deny_reason.is_none());
         assert!(events.iter().any(|e| matches!(&e.payload,
             pchi_schema::Payload::GovernanceEvent(d) if d.gate_state == "ALLOW")));
 

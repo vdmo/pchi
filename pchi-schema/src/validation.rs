@@ -99,10 +99,44 @@ fn validate_timestamp(timestamp: f64) -> Result<(), ValidationError> {
     Ok(())
 }
 
+/// Equilibrium is a property of a *scene* — a set of related values that a
+/// sender constructed to satisfy an invariant together (the Kraken example:
+/// 8 tentacles' wobbliness values, deliberately paired so their
+/// Prouhet-Thue-Morse-signed sum cancels). It is not a property of one
+/// independent fact.
+///
+/// Before this fix, every message type was checked against the same
+/// residual/coherence-gap threshold, including ControlParameter,
+/// MusicalContext, ArtistTracking and Heartbeat — messages that report a
+/// single value or a single unrelated fact and have no multi-value
+/// invariant to satisfy in the first place. A real bridge (Resolume)
+/// computed its residual as a Prouhet-Thue-Morse-signed sum over its last
+/// 1–4 *arbitrary, unrelated* recently-set parameters — a number with no
+/// real meaning — and this check rejected the update outright whenever
+/// that incidental window didn't happen to cancel. Tested live: a single
+/// layer's opacity change (one value) always failed; matched updates
+/// sometimes passed depending purely on send-order coincidence. See
+/// docs/LIMITATIONS.md item 7 for the full writeup before this fix.
+///
+/// Only `SceneUpdate` carries a payload that can genuinely represent
+/// multiple related object states a sender constructed to balance — so
+/// only `SceneUpdate` is checked here. The conductor already has the
+/// correct mechanism for tracking real equilibrium across single
+/// incremental updates: it recomputes actual aggregate equilibrium from
+/// the real accumulated scene state after every message
+/// (`SceneState::update_equilibrium_status`), independent of what any one
+/// message claims about itself — and the shipped default rule file already
+/// acts on that real value (`if equilibrium > 1e-12 then escalate(...)`
+/// in `kraken-tentacle.only-pchi`). This function stops duplicating that
+/// check, badly, at the transport layer.
 fn validate_invariants(
     message: &PCHIMessage,
     config: &ValidationConfig,
 ) -> Result<(), ValidationError> {
+    if !matches!(message.message_type, crate::MessageType::SceneUpdate) {
+        return Ok(());
+    }
+
     // Check equilibrium
     if message.pir_invariants.residual.abs() > config.max_residual {
         return Err(ValidationError::EquilibriumViolation {
@@ -110,7 +144,7 @@ fn validate_invariants(
             threshold: config.max_residual,
         });
     }
-    
+
     // Check coherence gap
     if message.pir_invariants.coherence_gap > config.max_coherence_gap {
         return Err(ValidationError::CoherenceGapViolation {
@@ -118,7 +152,7 @@ fn validate_invariants(
             threshold: config.max_coherence_gap,
         });
     }
-    
+
     Ok(())
 }
 
@@ -231,8 +265,98 @@ mod tests {
         );
         
         message.version = "1.0.0".to_string();
-        
+
         let result = validate_message(&message);
         assert!(matches!(result, Err(ValidationError::InvalidVersion(_))));
+    }
+
+    #[test]
+    fn scene_update_still_rejects_a_real_equilibrium_violation() {
+        // Regression guard: SceneUpdate is exactly the case this check
+        // exists for, and must still be enforced.
+        let mut message = PCHIMessage::new(
+            MessageType::SceneUpdate,
+            "test_source".to_string(),
+            Payload::SceneUpdate(SceneUpdateData {
+                objects: vec![crate::SceneObject {
+                    id: "obj1".to_string(),
+                    transform: crate::Transform::default(),
+                    custom_data: None,
+                    pir_constraints: None,
+                }],
+            }),
+        );
+        message.pir_invariants.residual = 1.0;
+        let result = validate_message(&message);
+        assert!(matches!(result, Err(ValidationError::EquilibriumViolation { .. })));
+    }
+
+    #[test]
+    fn control_parameter_is_not_gated_on_residual() {
+        // This is the actual bug: a single control-parameter change was
+        // rejected outright whenever its self-reported residual (computed
+        // by a real bridge as a PTM-signed sum over an arbitrary window of
+        // unrelated recent values) didn't happen to cancel — see
+        // docs/LIMITATIONS.md item 7. A single value can never validly
+        // "cancel" by construction, so this made most real updates fail
+        // essentially at random. ControlParameter has no multi-value
+        // invariant to assert in the first place.
+        let mut message = PCHIMessage::new(
+            MessageType::ControlParameter,
+            "resolume_bridge".to_string(),
+            Payload::ControlParameter(crate::ControlParameterData {
+                target_id: "resolume_layer_1".to_string(),
+                parameter: "opacity".to_string(),
+                value: serde_json::json!(0.85),
+            }),
+        );
+        message.pir_invariants.residual = 0.85; // exactly what a single-value PTM sum is
+        let result = validate_message(&message);
+        assert!(result.is_ok(), "expected Ok, got {:?}", result);
+    }
+
+    #[test]
+    fn heartbeat_is_not_gated_on_residual() {
+        let mut message = PCHIMessage::new(
+            MessageType::Heartbeat,
+            "resolume_bridge".to_string(),
+            Payload::ControlParameter(crate::ControlParameterData {
+                target_id: "resolume_bridge".to_string(),
+                parameter: "heartbeat".to_string(),
+                value: serde_json::json!(1.0),
+            }),
+        );
+        message.pir_invariants.residual = 0.5;
+        let result = validate_message(&message);
+        assert!(result.is_ok(), "expected Ok, got {:?}", result);
+    }
+
+    #[test]
+    fn musical_context_and_artist_tracking_are_not_gated_on_residual() {
+        let mut mc = PCHIMessage::new(
+            MessageType::MusicalContext,
+            "ableton_bridge".to_string(),
+            Payload::MusicalContext(crate::MusicalContextData {
+                bpm: 128.0,
+                beat: 1,
+                kick: true,
+                snare: false,
+                section: "drop".to_string(),
+            }),
+        );
+        mc.pir_invariants.residual = 3.0;
+        assert!(validate_message(&mc).is_ok());
+
+        let mut at = PCHIMessage::new(
+            MessageType::ArtistTracking,
+            "tracker".to_string(),
+            Payload::ArtistTracking(crate::ArtistTrackingData {
+                artist_id: "artist1".to_string(),
+                transform: crate::Transform::default(),
+                velocity: None,
+            }),
+        );
+        at.pir_invariants.residual = 3.0;
+        assert!(validate_message(&at).is_ok());
     }
 }

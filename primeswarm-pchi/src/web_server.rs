@@ -10,7 +10,7 @@ use axum::{
 };
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use futures_util::{SinkExt, StreamExt};
+use futures_util::StreamExt;
 use serde_json::json;
 
 /// Web server state

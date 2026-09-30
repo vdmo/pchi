@@ -90,7 +90,7 @@ fn validate_timestamp(timestamp: f64) -> Result<(), ValidationError> {
     const MIN_TIMESTAMP: f64 = 946_684_800_000.0; // 2000-01-01
     const MAX_TIMESTAMP: f64 = 4_102_444_800_000.0; // 2100-01-01
     
-    if timestamp < MIN_TIMESTAMP || timestamp > MAX_TIMESTAMP {
+    if !(MIN_TIMESTAMP..=MAX_TIMESTAMP).contains(&timestamp) {
         return Err(ValidationError::InvalidTimestamp(
             format!("timestamp {} out of valid range", timestamp)
         ));

@@ -3,7 +3,7 @@
 use crate::ConductorError;
 use tokio::net::UdpSocket;
 use tokio_tungstenite::tungstenite::protocol::Message;
-use futures_util::{SinkExt, StreamExt};
+use futures_util::SinkExt;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tracing::info;

@@ -150,6 +150,23 @@ impl PCHIConductor {
             }
         }
 
+        // Heartbeats carry no scene-state change — they exist purely so a
+        // bridge's liveness is visible, and set nothing in `state`. Before
+        // this, every message unconditionally re-evaluated all rules
+        // against whatever `state` already held, so a real, still-unfixed
+        // violation from an earlier message (e.g. a curl value left over
+        // threshold) got re-signed into a brand-new receipt on every
+        // subsequent heartbeat — every 5s by default in the bundled
+        // bridges — forever, for as long as that condition sat unaddressed.
+        // Found live: one real DENY produced 5 identical signed receipts
+        // (same receipt_id, since nothing about the content had changed)
+        // over 20 seconds of an otherwise-idle bridge. Not fixed by
+        // de-duplicating receipts after the fact — fixed at the source:
+        // a message that changes nothing has nothing new to evaluate.
+        if matches!(message.message_type, MessageType::Heartbeat) {
+            return Ok(());
+        }
+
         // Update equilibrium status
         state.update_equilibrium_status(self.equilibrium_threshold);
 
@@ -385,6 +402,47 @@ mod tests {
         assert_eq!(parsed["payload"]["data"]["gate_state"], "DENY");
 
         ws_task.abort();
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[tokio::test]
+    async fn heartbeat_does_not_re_sign_a_lingering_violation() {
+        let (conductor, dir) = test_conductor().await;
+
+        // Leave a real, still-unfixed violation in scene state.
+        let violating = PCHIMessage::new(
+            MessageType::ControlParameter,
+            "test".to_string(),
+            Payload::ControlParameter(ControlParameterData {
+                target_id: "tentacle_system".to_string(),
+                parameter: "total_curl".to_string(),
+                value: serde_json::json!(10.0),
+            }),
+        );
+        assert!(conductor.process_message(violating).await.is_err());
+        let count_after_violation = conductor.get_governance_arc().export()["count"].as_u64().unwrap();
+        assert_eq!(count_after_violation, 1, "the real violation should produce exactly one receipt");
+
+        // Five heartbeats, same unaddressed condition still sitting in state.
+        for _ in 0..5 {
+            let heartbeat = PCHIMessage::new(
+                MessageType::Heartbeat,
+                "test_bridge".to_string(),
+                Payload::ControlParameter(ControlParameterData {
+                    target_id: "test_bridge".to_string(),
+                    parameter: "heartbeat".to_string(),
+                    value: serde_json::json!(1.0),
+                }),
+            );
+            assert!(conductor.process_message(heartbeat).await.is_ok());
+        }
+
+        let count_after_heartbeats = conductor.get_governance_arc().export()["count"].as_u64().unwrap();
+        assert_eq!(
+            count_after_heartbeats, count_after_violation,
+            "heartbeats must not produce new receipts for a condition that hasn't changed"
+        );
+
         let _ = std::fs::remove_dir_all(&dir);
     }
 }

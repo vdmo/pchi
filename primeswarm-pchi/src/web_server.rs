@@ -1,9 +1,10 @@
 //! Web server for PCHI Conductor dashboard
 
-use crate::SceneState;
+use crate::{GovernanceLog, SceneState};
 use axum::{
     extract::{State, ws::WebSocket, WebSocketUpgrade},
-    response::{Html, IntoResponse},
+    http::{HeaderMap, StatusCode},
+    response::{Html, IntoResponse, Json},
     routing::get,
     Router,
 };
@@ -17,6 +18,11 @@ use serde_json::json;
 pub struct WebServerState {
     /// Current scene state
     pub scene_state: Arc<RwLock<SceneState>>,
+    /// Signed, hash-chained governance receipt log. `None` if this server
+    /// was built without governance wiring (kept `Option` so the struct
+    /// stays constructible from just a scene-state arc, as it always has
+    /// been, for anyone already embedding it that way).
+    pub governance: Option<Arc<GovernanceLog>>,
 }
 
 /// Create web server router
@@ -24,7 +30,42 @@ pub fn create_router(state: WebServerState) -> Router {
     Router::new()
         .route("/", get(dashboard_handler))
         .route("/ws", get(websocket_handler))
+        .route("/governance/export", get(governance_export_handler))
         .with_state(state)
+}
+
+/// GET /governance/export — the signed, hash-chained batch of every rule
+/// firing this conductor has recorded. Guarded by `PCHI_GOVERNANCE_KEY`
+/// (sent as `X-Governance-Key`) when that env var is set; open otherwise,
+/// since this conductor is meant to be self-hosted on a machine the
+/// operator already controls — unlike DGV's `/decisions/export` (a
+/// multi-tenant service other people's agents call), there's no default
+/// audience this needs to be closed against. Set the key anyway before
+/// exposing this conductor beyond localhost.
+async fn governance_export_handler(
+    State(state): State<WebServerState>,
+    headers: HeaderMap,
+) -> impl IntoResponse {
+    let Some(gov) = &state.governance else {
+        return (
+            StatusCode::NOT_IMPLEMENTED,
+            Json(json!({"error": "governance_not_configured"})),
+        )
+            .into_response();
+    };
+    if let Ok(required) = std::env::var("PCHI_GOVERNANCE_KEY") {
+        if !required.is_empty() {
+            let provided = headers.get("X-Governance-Key").and_then(|v| v.to_str().ok());
+            if provided != Some(required.as_str()) {
+                return (
+                    StatusCode::UNAUTHORIZED,
+                    Json(json!({"error": "governance_key_required", "hint": "set X-Governance-Key"})),
+                )
+                    .into_response();
+            }
+        }
+    }
+    (StatusCode::OK, Json(gov.export())).into_response()
 }
 
 /// Serve the dashboard HTML

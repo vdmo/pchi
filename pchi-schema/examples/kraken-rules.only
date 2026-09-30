@@ -1,5 +1,11 @@
 # Only-Lang Rules for Kraken Tentacle Scene
 # PCHI v2.0 + PIR Mathematical Governance
+#
+# NOTE: this file documents the target grammar (loops, `sum(...)`
+# comprehensions) — primeswarm-pchi's real parser (src/only_lang.rs) does
+# not support those constructs yet and will reject this file. The rule set
+# actually loaded and enforced today is the equivalent subset-only rewrite
+# at kraken-tentacle.only-pchi in this same directory.
 
 # Set equilibrium precision threshold
 harmony(1e-12)

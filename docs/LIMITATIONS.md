@@ -87,7 +87,51 @@ conductor's current behavior.
 **Not yet built:** a FlatBuffers encode/decode path actually wired into
 `conductor.rs`'s message handling.
 
-## 7. Governance-Event Messages From Other Conductors Are Logged, Not Re-Verified
+## 7. A Single Bridge Update's Equilibrium Check Passes or Fails Arbitrarily
+
+`message.validate()` (`pchi-schema/src/validation.rs`) rejects a message
+outright if its own self-reported `pir_invariants.residual` exceeds
+`1e-12` — before the conductor ever applies the state change. The
+Resolume bridge (`tools/resolume-pchi-bridge`) computes that residual as
+a Prouhet-Thue-Morse-signed sum over its last 1–4 recently-set parameter
+values (`create_pchi_message`'s `values = list(self.state.values())[-4:]`).
+
+Tested live against a real conductor: a single layer's opacity change
+(one value, signs `[1]`) always fails — a lone nonzero value can never
+sum to zero. Four different layers set to the *same* value in sequence
+sometimes passed and sometimes didn't, depending on which arbitrary
+1–4-value window each individual message happened to compute against at
+send time — not on whether the change was safe or harmonious in any
+real sense. A rejected message's state change is **never applied**
+(`process_message`'s `message.validate()?` returns before the match
+block runs), so this isn't just a logged warning — it's a silently
+dropped update from the caller's point of view (the bridge's OSC
+handler has no failure feedback path back to Resolume).
+
+**What this means:** the "Zero-Drift Sync" claim does not hold for
+generic Resolume/TouchDesigner/Ableton parameter changes as this bridge
+computes equilibrium today — most single-parameter updates will be
+dropped, essentially at random, by a check that was designed around
+deliberately-paired values (the Kraken tentacle example, where
+wobbliness values are constructed in matched pairs specifically so the
+signed sum cancels), not around arbitrary incoming state.
+
+**Not fixed here:** loosening or redesigning the equilibrium check is a
+real design decision (what should "harmonious" mean for an arbitrary
+single-parameter change?), not a bug fix — it needs an answer from
+whoever owns the PIR-invariant design, not a guess. **Fixed in the
+Resolume bridge itself:** two independent bugs that meant *no* message —
+passing or failing this check — ever reached the conductor before this
+change: `message_type`/`payload_type` were serialized under their
+Python field names instead of the wire names (`type`/`payloadType`) the
+schema's `#[serde(rename = ...)]` actually requires, and messages were
+sent OSC-wrapped (`osc_client.send_message`) rather than as raw
+JSON-over-UDP, which is the only format the conductor's receive loop
+parses. Heartbeats additionally omitted `pir_invariants` and `payload`
+entirely, both required fields with no `#[serde(default)]` — every
+heartbeat this bridge sent was rejected as unparseable before this fix.
+
+## 8. Governance-Event Messages From Other Conductors Are Logged, Not Re-Verified
 
 A `MessageType::GovernanceEvent` received from another source is recorded
 as informational (`conductor.rs`) but its embedded `receipt_id` is not

@@ -68,6 +68,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let udp_handle = tokio::spawn(conductor.clone().run_udp_receive_loop());
     println!("Governing incoming UDP traffic on 127.0.0.1:8888");
 
+    // Accept WebSocket clients on 8889 so broadcast_websocket (governance
+    // events) actually reaches someone. Until this ran, the socket was
+    // bound but nothing ever accepted a connection.
+    let ws_handle = tokio::spawn(conductor.clone().run_ws_accept_loop());
+    println!("Accepting governance-event WebSocket clients on ws://127.0.0.1:8889");
+
     println!("PCHI Conductor running. Press Ctrl+C to stop.");
 
     // Wait for shutdown signal
@@ -78,6 +84,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // stop_transport needs &mut self, which the Arc above gave up)
     web_handle.abort();
     udp_handle.abort();
+    ws_handle.abort();
 
     println!("PCHI Conductor stopped");
 

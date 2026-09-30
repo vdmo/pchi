@@ -158,15 +158,23 @@ impl PCHIConductor {
         // returned Ok regardless of a DENY), so a caller had no way to
         // learn a denial actually happened. Every fired rule is signed
         // into the governance log before this returns, denial or not.
-        let events = self.rule_engine.evaluate(&state, &self.governance)?;
+        let (events, deny_reason) = self.rule_engine.evaluate(&state, &self.governance)?;
         drop(state);
 
+        // Broadcast every event — including a DENY's — before turning a
+        // denial into the error this function returns. evaluate() used to
+        // return Err directly on a deny, which discarded events before
+        // they were ever broadcast; see evaluate()'s doc comment.
         for event in events {
             if let Ok(bytes) = serde_json::to_vec(&event) {
                 if let Err(e) = self.transport.broadcast_websocket(&bytes).await {
                     error!("Failed to broadcast governance event: {}", e);
                 }
             }
+        }
+
+        if let Some(msg) = deny_reason {
+            return Err(ConductorError::RuleError(msg));
         }
 
         Ok(())
@@ -195,6 +203,30 @@ impl PCHIConductor {
     /// Start the transport layer
     pub async fn start_transport(&mut self, bind_addr: &str) -> Result<(), ConductorError> {
         self.transport.start(bind_addr).await
+    }
+
+    /// Accept WebSocket connections on the transport layer's dedicated port
+    /// (8889) and register each with `TransportLayer` so
+    /// `broadcast_websocket` — the mechanism `process_message` uses to push
+    /// governance events out in real time — actually has clients to send
+    /// to. `start_transport` only opens the listening socket; until this
+    /// ran, nothing ever called `accept_websocket`, so `ws_clients` was
+    /// permanently empty and every broadcast silently went nowhere. Same
+    /// bug shape as the UDP receive loop above, found the same way: by
+    /// actually testing the path end-to-end instead of assuming a bound
+    /// socket means a served one.
+    pub async fn run_ws_accept_loop(self: Arc<Self>) {
+        loop {
+            match self.transport.accept_websocket().await {
+                Ok((id, stream)) => {
+                    self.transport.add_ws_client(id, stream).await;
+                }
+                Err(e) => {
+                    error!("WebSocket accept loop stopping: {}", e);
+                    return;
+                }
+            }
+        }
     }
 
     /// Receive PCHI messages over UDP and feed them into `process_message`
@@ -297,6 +329,62 @@ mod tests {
             }),
         );
         assert!(conductor.process_message(msg).await.is_ok());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[tokio::test]
+    async fn governance_events_actually_reach_a_connected_ws_client() {
+        // Regression test for the bug this fixes: broadcast_websocket had a
+        // real client registry and real send logic, but nothing ever called
+        // accept_websocket to populate it — every broadcast silently went
+        // nowhere, undetected because no test exercised a real WS
+        // connection end-to-end. bind_addr must end in exactly ":8888" —
+        // start_transport derives the WS port via bind_addr.replace(
+        // ":8888", ":8889"), a plain substring replace with no other
+        // validation.
+        let (mut conductor, dir) = test_conductor().await;
+        conductor.start_transport("127.0.0.1:8888").await.unwrap();
+        let conductor = Arc::new(conductor);
+        let ws_task = tokio::spawn(conductor.clone().run_ws_accept_loop());
+
+        // Give the accept loop a moment to actually be polling accept().
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+
+        let (ws_stream, _) = tokio_tungstenite::connect_async("ws://127.0.0.1:8889")
+            .await
+            .expect("client should connect to the now-accepting WS server");
+        let (_, mut read) = futures_util::StreamExt::split(ws_stream);
+
+        // Give the server a moment to register the new client before the
+        // triggering message is processed — otherwise the broadcast could
+        // race the registration.
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+
+        let msg = PCHIMessage::new(
+            MessageType::ControlParameter,
+            "test".to_string(),
+            Payload::ControlParameter(ControlParameterData {
+                target_id: "tentacle_system".to_string(),
+                parameter: "total_curl".to_string(),
+                value: serde_json::json!(10.0),
+            }),
+        );
+        // Expected to Err (a real DENY) — the point here is what the WS
+        // client receives, not this call's return value.
+        let _ = conductor.process_message(msg).await;
+
+        let received = tokio::time::timeout(std::time::Duration::from_secs(5), futures_util::StreamExt::next(&mut read))
+            .await
+            .expect("timed out waiting for a governance event over the WS connection")
+            .expect("stream ended without a message")
+            .expect("WS read error");
+
+        let text = received.into_text().expect("expected a text frame");
+        let parsed: serde_json::Value = serde_json::from_str(&text).expect("expected valid PCHIMessage JSON");
+        assert_eq!(parsed["type"], "governance_event");
+        assert_eq!(parsed["payload"]["data"]["gate_state"], "DENY");
+
+        ws_task.abort();
         let _ = std::fs::remove_dir_all(&dir);
     }
 }

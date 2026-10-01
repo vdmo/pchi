@@ -95,9 +95,28 @@ Tested live, both directions, against a real running Conductor —
 including an explicit check that the CORS preflight (`OPTIONS` with
 `Origin`/`Access-Control-Request-*` headers, exactly what a browser
 sends, not just a plain `curl`) returns the right headers, and that the
-actual `POST` does too. **Not tested against real cables.gl** — the
-WebSocket-receive shape is confirmed from a real official example, but
-the outbound HTTP-request op and the WebSocket message parsing on the
-cables side are not independently confirmed the way TiXL's operators
-were confirmed against real compiled source. If you wire this up in an
-actual patch and something doesn't match, please open an issue.
+actual `POST` does too.
+
+**Tested against real cables.gl via browser automation** (a real
+headless Chromium driving the live, currently-maintained
+`https://cables.gl/edit/gu7DBo` example patch — not a synthetic
+harness): the real op class (`Ops.Net.WebSocket.WebSocket_v2`) was
+located and confirmed, its canvas was found inside cables' own
+separate-origin `sandbox.cables.gl` iframe, and its URL parameter field
+was genuinely read back and edited through cables' real UI, not
+assumed.
+
+A full live round-trip — the public cables.gl site actually exchanging
+messages with a relay on `localhost` — was not completed. It's blocked
+by a real, current browser security boundary: Chrome's Local Network
+Access policy refuses a public-origin page (`sandbox.cables.gl`) a
+connection to a loopback address without an interactive permission
+grant, which headless automation can't click through. This is not a
+bug in the relay or in cables — an interactive user hitting
+`https://cables.gl` would see a one-time Chrome permission prompt, and
+a standalone or Electron build of cables (not loaded as a remote HTTPS
+page) would likely avoid this policy entirely, since that's not the
+scenario it targets.
+
+If you wire this up in an actual patch and something doesn't match,
+please open an issue.

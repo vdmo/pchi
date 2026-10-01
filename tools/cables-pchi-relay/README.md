@@ -95,9 +95,39 @@ Tested live, both directions, against a real running Conductor —
 including an explicit check that the CORS preflight (`OPTIONS` with
 `Origin`/`Access-Control-Request-*` headers, exactly what a browser
 sends, not just a plain `curl`) returns the right headers, and that the
-actual `POST` does too. **Not tested against real cables.gl** — the
-WebSocket-receive shape is confirmed from a real official example, but
-the outbound HTTP-request op and the WebSocket message parsing on the
-cables side are not independently confirmed the way TiXL's operators
-were confirmed against real compiled source. If you wire this up in an
-actual patch and something doesn't match, please open an issue.
+actual `POST` does too.
+
+**Tested against real cables.gl via browser automation** (a real
+headless Chromium driving the live, currently-maintained
+`https://cables.gl/edit/gu7DBo` example patch — not a synthetic
+harness): the real op class (`Ops.Net.WebSocket.WebSocket_v2`) was
+located and confirmed, its canvas was found inside cables' own
+separate-origin `sandbox.cables.gl` iframe, and its URL parameter field
+was genuinely read back and edited through cables' real UI, not
+assumed.
+
+**The full live round-trip is verified, too.** Pointed at this relay,
+the real op's own parameter panel reported `Connected: true`,
+`Valid JSON: true`, and a `Raw Data` value carrying this relay's actual
+`gate_state: "DENY"` payload from a real Conductor rule firing —
+reproduced twice. Getting there meant working through a real browser
+security boundary first: a public-origin page (`sandbox.cables.gl`)
+reaching a loopback address trips Chrome's Local Network Access checks
+(`net::ERR_BLOCKED_BY_LOCAL_NETWORK_ACCESS_CHECKS`). Granting the
+corresponding `local-network-access` permission programmatically (the
+mechanism Chrome exposes for automated testing, via
+`Browser.setPermission`) did *not* clear it; disabling Chromium's
+underlying `LocalNetworkAccessChecks`/`LocalNetworkAccessChecksWebSockets`
+feature flags at browser launch did. Both are automation-only levers —
+nothing a site can trigger for a visitor — and it's not independently
+confirmed that a real person clicking through Chrome's actual one-time
+interactive prompt lands in the same working state (the permission-grant
+experiment above suggests it might not, though that could equally be a
+quirk of the CDP-driven grant rather than the real prompt flow). For
+production use without browser flags, cables' own
+[standalone/Electron build](https://cables.gl/standalone) — a real,
+officially distributed download, not loaded as a remote HTTPS page —
+is the clean path around this entirely.
+
+If you wire this up in an actual patch and something doesn't match,
+please open an issue.

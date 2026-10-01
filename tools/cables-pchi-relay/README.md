@@ -74,6 +74,18 @@ constraint). `gate_state_code` (1.0/0.5/0.0 = ALLOW/ESCALATE/DENY) is
 included too, in case a numeric comparison is more convenient in your
 op graph than a string comparison.
 
+**Checking whether a patch is actually connected:**
+
+`GET http://<this relay>:9100/status` returns
+`{"cables_clients_connected": N}`. Useful for anything scripting against
+this relay (a demo, a test, a monitoring check) that needs to know
+whether a governance event has anywhere to go before sending a control
+update and waiting for a verdict — a cables op's WebSocket connection
+can drop and not immediately reconnect (seen in practice right after
+changing its URL field), and a control update sent while `N` is `0`
+won't be missed by the Conductor, but its verdict has no live
+destination until a client reconnects.
+
 ## CORS
 
 A cables patch is served from a different origin than this relay, so

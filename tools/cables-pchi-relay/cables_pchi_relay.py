@@ -157,7 +157,14 @@ class CablesPCHIRelay:
         target = f"ws://{self.pchi_host}:{self.pchi_ws_port}"
         while self.running:
             try:
-                async with websockets.connect(target) as ws:
+                # ping_timeout=60 (the `websockets` library default is 20):
+                # a busy peer — a loaded conductor, a CPU-starved browser
+                # tab on the cables side of this relay — can miss a pong
+                # well inside 20s without actually being dead. Seen in
+                # practice: real "1011 keepalive ping timeout" disconnects
+                # under heavy unrelated CPU load, not a sign either side
+                # had actually stopped responding.
+                async with websockets.connect(target, ping_timeout=60) as ws:
                     print(f"[Conductor WS] connected to {target}")
                     async for raw in ws:
                         await self._handle_conductor_message(raw)
@@ -213,7 +220,11 @@ class CablesPCHIRelay:
         asyncio.set_event_loop(self._loop)
 
         async def main():
-            async with websockets.serve(self._cables_ws_handler, "0.0.0.0", self.ws_port):
+            # Same reasoning as the Conductor-facing client above: a
+            # cables.gl tab running in a CPU-starved browser can miss a
+            # pong well inside the library's 20s default without its
+            # connection actually being dead.
+            async with websockets.serve(self._cables_ws_handler, "0.0.0.0", self.ws_port, ping_timeout=60):
                 print(f"cables-facing WebSocket server listening on port {self.ws_port}")
                 await self.watch_conductor_governance()
 
@@ -233,6 +244,18 @@ class CablesPCHIRelay:
                 self.send_response(204)
                 self._cors_headers()
                 self.end_headers()
+
+            def do_GET(self):
+                if self.path != "/status":
+                    self.send_response(404)
+                    self._cors_headers()
+                    self.end_headers()
+                    return
+                self.send_response(200)
+                self._cors_headers()
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"cables_clients_connected": len(relay.cables_clients)}).encode())
 
             def do_POST(self):
                 if self.path != "/pchi/control":

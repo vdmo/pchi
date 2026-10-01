@@ -106,17 +106,28 @@ separate-origin `sandbox.cables.gl` iframe, and its URL parameter field
 was genuinely read back and edited through cables' real UI, not
 assumed.
 
-A full live round-trip — the public cables.gl site actually exchanging
-messages with a relay on `localhost` — was not completed. It's blocked
-by a real, current browser security boundary: Chrome's Local Network
-Access policy refuses a public-origin page (`sandbox.cables.gl`) a
-connection to a loopback address without an interactive permission
-grant, which headless automation can't click through. This is not a
-bug in the relay or in cables — an interactive user hitting
-`https://cables.gl` would see a one-time Chrome permission prompt, and
-a standalone or Electron build of cables (not loaded as a remote HTTPS
-page) would likely avoid this policy entirely, since that's not the
-scenario it targets.
+**The full live round-trip is verified, too.** Pointed at this relay,
+the real op's own parameter panel reported `Connected: true`,
+`Valid JSON: true`, and a `Raw Data` value carrying this relay's actual
+`gate_state: "DENY"` payload from a real Conductor rule firing —
+reproduced twice. Getting there meant working through a real browser
+security boundary first: a public-origin page (`sandbox.cables.gl`)
+reaching a loopback address trips Chrome's Local Network Access checks
+(`net::ERR_BLOCKED_BY_LOCAL_NETWORK_ACCESS_CHECKS`). Granting the
+corresponding `local-network-access` permission programmatically (the
+mechanism Chrome exposes for automated testing, via
+`Browser.setPermission`) did *not* clear it; disabling Chromium's
+underlying `LocalNetworkAccessChecks`/`LocalNetworkAccessChecksWebSockets`
+feature flags at browser launch did. Both are automation-only levers —
+nothing a site can trigger for a visitor — and it's not independently
+confirmed that a real person clicking through Chrome's actual one-time
+interactive prompt lands in the same working state (the permission-grant
+experiment above suggests it might not, though that could equally be a
+quirk of the CDP-driven grant rather than the real prompt flow). For
+production use without browser flags, cables' own
+[standalone/Electron build](https://cables.gl/standalone) — a real,
+officially distributed download, not loaded as a remote HTTPS page —
+is the clean path around this entirely.
 
 If you wire this up in an actual patch and something doesn't match,
 please open an issue.

@@ -445,4 +445,62 @@ mod tests {
 
         let _ = std::fs::remove_dir_all(&dir);
     }
+
+    #[tokio::test]
+    async fn with_rules_file_actually_uses_the_custom_rules_not_the_bundled_default() {
+        let dir = std::env::temp_dir().join(format!("pchi-rulesfile-test-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&dir).unwrap();
+
+        // A threshold (2.0) stricter than the bundled default's (4.0) —
+        // chosen so a value that the bundled rules would silently allow
+        // only denies if this file is genuinely the one in effect.
+        let rules_path = dir.join("strict.only-pchi");
+        std::fs::write(
+            &rules_path,
+            "harmony(1e-12)\n\nif tentacle_system.total_curl > 2.0 then\n    deny(\"too strict for the bundled default to agree with\")\nend\n",
+        )
+        .unwrap();
+
+        let conductor = PCHIConductor::with_rules_file(
+            1e-12,
+            rules_path.to_str().unwrap(),
+            dir.join("key.hex").to_str().unwrap(),
+            dir.join("log.jsonl").to_str().unwrap(),
+        )
+        .unwrap();
+
+        let msg = PCHIMessage::new(
+            MessageType::ControlParameter,
+            "test".to_string(),
+            Payload::ControlParameter(ControlParameterData {
+                target_id: "tentacle_system".to_string(),
+                parameter: "total_curl".to_string(),
+                value: serde_json::json!(3.0),
+            }),
+        );
+        let result = conductor.process_message(msg).await;
+        assert!(
+            result.is_err(),
+            "3.0 is under the bundled default's 4.0 threshold but over this file's 2.0 — \
+             an error here proves the custom file is the one actually loaded"
+        );
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[tokio::test]
+    async fn with_rules_file_rejects_a_missing_path_instead_of_silently_falling_back() {
+        let dir = std::env::temp_dir().join(format!("pchi-rulesfile-missing-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&dir).unwrap();
+
+        let result = PCHIConductor::with_rules_file(
+            1e-12,
+            dir.join("does-not-exist.only-pchi").to_str().unwrap(),
+            dir.join("key.hex").to_str().unwrap(),
+            dir.join("log.jsonl").to_str().unwrap(),
+        );
+        assert!(result.is_err(), "a missing rules file must be a startup error, not a silent fallback");
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 }

@@ -18,9 +18,9 @@ This repository contains all the core libraries, tools, and documentation needed
 
 ```bash
 cargo build   # workspace root — builds pchi-schema and primeswarm-pchi
-cargo test    # 25 tests: schema validation, the Only-Lang parser/evaluator,
+cargo test    # 40 tests: schema validation, the Only-Lang parser/evaluator,
               # signed-receipt chaining and tamper detection, end-to-end
-              # rule denial through the conductor
+              # rule denial through the conductor, dashboard auth
 ```
 
 ## Governance — what's real
@@ -35,6 +35,26 @@ message), and signs + hash-chains every fired rule into an append-only log
 cargo run -p primeswarm-pchi &
 curl http://127.0.0.1:3000/governance/export > export.json
 python3 scripts/verify_governance_chain.py export.json
+```
+
+A fresh checkout runs the bundled default rule set
+(`pchi-schema/examples/kraken-tentacle.only-pchi`). Point it at a
+different `.only-pchi` file for a real venue/show instead — no recompile
+needed:
+
+```bash
+cargo run -p primeswarm-pchi -- --rules ./my-venue-rules.only-pchi
+# or: PCHI_RULES_FILE=./my-venue-rules.only-pchi cargo run -p primeswarm-pchi
+```
+
+The dashboard, its `/ws` feed, and `/governance/export` are open by
+default (self-hosted on a machine its operator already controls). Set
+`PCHI_DASHBOARD_PASSWORD` to require HTTP Basic Auth (username
+`operator`) before exposing a conductor beyond localhost:
+
+```bash
+PCHI_DASHBOARD_PASSWORD=change-me cargo run -p primeswarm-pchi
+curl -u operator:change-me http://127.0.0.1:3000/governance/export
 ```
 
 See `PRICING.md` for what's free (all of the above, unrestricted,

@@ -2,16 +2,52 @@
 
 use primeswarm_pchi::{PCHIConductor, WebServerState, create_router};
 use pchi_schema::{PCHIMessage, MessageType, Payload, ControlParameterData};
+use clap::Parser;
 use std::sync::Arc;
+
+/// PCHI Conductor — central state management with PIR mathematical
+/// governance. All flags also read from an env var of the same name
+/// (upper-cased), so a container/service deployment can configure this
+/// without touching the invocation.
+#[derive(Parser)]
+#[command(about = "PCHI Conductor - central state management with PIR mathematical governance")]
+struct Cli {
+    /// Path to a .only-pchi rule file. Omit to use the bundled default
+    /// rule set (pchi-schema/examples/kraken-tentacle.only-pchi) — the
+    /// same rules every fresh checkout has always run, unchanged.
+    #[arg(long, env = "PCHI_RULES_FILE")]
+    rules: Option<String>,
+}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize logging
     tracing_subscriber::fmt::init();
-    
-    // Create PCHI Conductor
-    let mut conductor = PCHIConductor::new(1e-12);
-    
+
+    let cli = Cli::parse();
+
+    // Create PCHI Conductor. Loading rules from a file at startup — rather
+    // than only ever running the rule set compiled into the binary — is
+    // what makes a single `primeswarm-pchi` build usable across different
+    // venues/shows: each one points at its own .only-pchi file instead of
+    // needing a recompile to change a safety threshold.
+    let mut conductor = match &cli.rules {
+        Some(path) => {
+            println!("Loading rules from {}", path);
+            PCHIConductor::with_rules_file(
+                1e-12,
+                path,
+                "pchi_governance_key.hex",
+                "pchi_governance_log.jsonl",
+            )
+            .unwrap_or_else(|e| {
+                eprintln!("Failed to load rules from {}: {}", path, e);
+                std::process::exit(1);
+            })
+        }
+        None => PCHIConductor::new(1e-12),
+    };
+
     println!("PCHI Conductor started");
     
     // Start transport layer (UDP + WebSocket)
@@ -19,10 +55,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Transport layer started on UDP 127.0.0.1:8888");
     println!("WebSocket server started on ws://127.0.0.1:8889");
     
-    // Create web server state
+    // Create web server state. PCHI_DASHBOARD_PASSWORD, when set, requires
+    // HTTP Basic Auth (username "operator") on the dashboard, its /ws feed,
+    // and /governance/export — unset by default, same self-hosted-trusted-
+    // machine posture this conductor has always had.
+    let dashboard_password = std::env::var("PCHI_DASHBOARD_PASSWORD")
+        .ok()
+        .filter(|s| !s.is_empty());
+    if dashboard_password.is_some() {
+        println!("Dashboard auth enabled (HTTP Basic, username: operator)");
+    } else {
+        println!("Dashboard auth disabled — set PCHI_DASHBOARD_PASSWORD to require credentials");
+    }
     let web_state = WebServerState {
         scene_state: conductor.get_state_arc(),
         governance: Some(conductor.get_governance_arc()),
+        dashboard_password,
     };
     println!(
         "Governance log verifying_key: {}",

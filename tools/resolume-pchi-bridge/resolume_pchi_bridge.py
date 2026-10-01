@@ -140,17 +140,31 @@ class ResolumePCHIBridge:
         print(f"  Sending PCHI to {pchi_conductor_host}:{pchi_conductor_port}")
     
     def handle_osc_message(self, address: str, *args):
-        """Handle incoming OSC message from Resolume"""
+        """Handle incoming OSC message from Resolume.
+
+        Found live, by this repo's demos/multi-tool-live-show sending a
+        real address in the format this bridge's own docstring documents:
+        `/composition/layers/{layer_id}/video/{parameter}`
+        splits (on a leading '/') into
+        ['', 'composition', 'layers', '{layer_id}', 'video', '{parameter}']
+        — six elements, with the real parameter at index 5. This used to
+        read `parts[4]` ("video", the fixed category segment every
+        video-layer address shares) as the parameter instead — every
+        real layer control silently collapsed onto target "video",
+        discarding which parameter (opacity, strobe_intensity, ...) had
+        actually changed. Confirmed via the Conductor's own log:
+        `resolume_layer_main.video` was being set, never
+        `resolume_layer_main.strobe_intensity`, so a rule gating on the
+        real parameter name never fired no matter the value sent.
+        """
         try:
-            # Parse Resolume OSC address
-            # Format: /composition/layers/{layer_id}/video/{parameter}
             parts = address.split('/')
-            
-            if len(parts) < 4:
+
+            if len(parts) < 6:
                 return
-            
-            layer_id = parts[3] if len(parts) > 3 else "unknown"
-            parameter = parts[4] if len(parts) > 4 else "unknown"
+
+            layer_id = parts[3]
+            parameter = parts[5]
             value = args[0] if args else 0.0
             
             # Update state
@@ -273,9 +287,19 @@ class ResolumePCHIBridge:
         print("Starting Resolume PCHI Bridge...")
         self.running = True
         
-        # Setup OSC dispatcher
+        # Setup OSC dispatcher. Only one mapping, not two: python-osc's
+        # `*` wildcard matching isn't strict about trailing segments, so
+        # a real 5-segment address like
+        # /composition/layers/main/video/strobe_intensity matched BOTH
+        # "/composition/*/*/*" and "/composition/*/*/*/*" (confirmed via
+        # Dispatcher.handlers_for_address returning 2 handlers for one
+        # address) — handle_osc_message ran twice per real OSC message,
+        # producing two PCHI messages, two rule evaluations, and two
+        # signed receipts for every single actual change. The one
+        # pattern this bridge's own docstring documents
+        # (/composition/layers/{layer_id}/video/{parameter}, six parts
+        # after split) is the only one kept.
         dispatcher = Dispatcher()
-        dispatcher.map("/composition/*/*/*", self.handle_osc_message)
         dispatcher.map("/composition/*/*/*/*", self.handle_osc_message)
         
         # Start heartbeat thread

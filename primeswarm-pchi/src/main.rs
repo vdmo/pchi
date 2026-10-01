@@ -17,6 +17,12 @@ struct Cli {
     /// same rules every fresh checkout has always run, unchanged.
     #[arg(long, env = "PCHI_RULES_FILE")]
     rules: Option<String>,
+
+    /// Where to periodically snapshot scene state, so a restart resumes
+    /// instead of starting blank. Always enabled, same as the governance
+    /// log's own default-local-file behavior.
+    #[arg(long, env = "PCHI_STATE_FILE", default_value = "pchi_scene_state.json")]
+    state_file: String,
 }
 
 #[tokio::main]
@@ -46,7 +52,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             })
         }
         None => PCHIConductor::new(1e-12),
-    };
+    }
+    .with_state_file(&cli.state_file);
 
     println!("PCHI Conductor started");
     
@@ -122,17 +129,31 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let ws_handle = tokio::spawn(conductor.clone().run_ws_accept_loop());
     println!("Accepting governance-event WebSocket clients on ws://127.0.0.1:8889");
 
+    // Periodically snapshot scene state so a restart resumes instead of
+    // starting blank. A no-op loop if persistence somehow ended up
+    // disabled, so always safe to spawn.
+    let snapshot_handle = tokio::spawn(
+        conductor.clone().run_state_snapshot_loop(std::time::Duration::from_secs(2)),
+    );
+    println!("Persisting scene state to {} every 2s", cli.state_file);
+
     println!("PCHI Conductor running. Press Ctrl+C to stop.");
 
     // Wait for shutdown signal
     tokio::signal::ctrl_c().await?;
     println!("Shutting down...");
 
+    // One last snapshot before tearing down, so a planned restart loses
+    // nothing regardless of where in the snapshot loop's interval this
+    // landed.
+    conductor.snapshot_state_now().await;
+
     // Stop background tasks (dropping the process closes the sockets;
     // stop_transport needs &mut self, which the Arc above gave up)
     web_handle.abort();
     udp_handle.abort();
     ws_handle.abort();
+    snapshot_handle.abort();
 
     println!("PCHI Conductor stopped");
 

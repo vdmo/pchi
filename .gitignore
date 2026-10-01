@@ -1,3 +1,7 @@
 /target
 __pycache__/
 *.pyc
+pchi_governance_key.hex
+pchi_governance_log.jsonl
+pchi_scene_state.json
+pchi_scene_state.json.tmp

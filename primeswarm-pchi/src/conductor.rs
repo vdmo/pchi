@@ -23,6 +23,12 @@ pub struct PCHIConductor {
 
     /// Equilibrium threshold
     equilibrium_threshold: f64,
+
+    /// Where to periodically snapshot scene state, if persistence is
+    /// enabled (`None` by default — see `with_state_file`). A crash
+    /// restart with this unset starts from a blank `SceneState`, same as
+    /// every version of this conductor before this field existed.
+    state_file: Option<String>,
 }
 
 impl PCHIConductor {
@@ -53,6 +59,7 @@ impl PCHIConductor {
             governance: Arc::new(GovernanceLog::open(signing_key_path, governance_log_path)?),
             transport: TransportLayer::new(),
             equilibrium_threshold,
+            state_file: None,
         })
     }
 
@@ -70,7 +77,36 @@ impl PCHIConductor {
             governance: Arc::new(GovernanceLog::open(signing_key_path, governance_log_path)?),
             transport: TransportLayer::new(),
             equilibrium_threshold,
+            state_file: None,
         })
+    }
+
+    /// Enable periodic scene-state persistence to `path`, loading an
+    /// existing snapshot from it right now if one's there — so a restart
+    /// resumes from the last snapshot instead of starting blank. Chain
+    /// this onto `new`/`with_governance_paths`/`with_rules_file` before
+    /// wrapping the conductor in `Arc` and spawning its background loops;
+    /// `run_state_snapshot_loop` is what actually keeps writing to `path`
+    /// afterward.
+    ///
+    /// This is a resilience convenience, not the safety-critical
+    /// durability guarantee the governance log already has (that log
+    /// fsyncs every signed receipt as it's recorded) — losing scene
+    /// state on an ungraceful crash means tools and the conductor
+    /// disagree about "where were we," not that an unsafe state went
+    /// unlogged.
+    pub fn with_state_file(mut self, path: &str) -> Self {
+        match SceneState::load_snapshot(path) {
+            Some(loaded) => {
+                info!("Resumed scene state from {} (last updated {})", path, loaded.timestamp);
+                self.state = Arc::new(RwLock::new(loaded));
+            }
+            None => {
+                info!("No existing scene state snapshot at {} — starting fresh", path);
+            }
+        }
+        self.state_file = Some(path.to_string());
+        self
     }
 
     /// Process an incoming PCHI message
@@ -285,6 +321,50 @@ impl PCHIConductor {
     pub async fn stop_transport(&mut self) -> Result<(), ConductorError> {
         self.transport.stop().await
     }
+
+    /// Periodically snapshot scene state to disk, if `with_state_file`
+    /// enabled it — a no-op loop that returns immediately otherwise, so
+    /// it's always safe to spawn alongside the other background loops
+    /// regardless of whether persistence is configured. Skips the write
+    /// when nothing has changed since the last snapshot, compared via
+    /// `SceneState::timestamp` (already updated by every mutation), so
+    /// an idle conductor isn't rewriting an unchanged file every
+    /// interval.
+    pub async fn run_state_snapshot_loop(self: Arc<Self>, interval: std::time::Duration) {
+        let Some(path) = self.state_file.clone() else {
+            return;
+        };
+        let mut last_snapshotted: Option<chrono::DateTime<chrono::Utc>> = None;
+        loop {
+            tokio::time::sleep(interval).await;
+            let (timestamp, snapshot) = {
+                let state = self.state.read().await;
+                (state.timestamp, state.clone())
+            };
+            if last_snapshotted == Some(timestamp) {
+                continue;
+            }
+            match snapshot.save_snapshot(&path) {
+                Ok(()) => last_snapshotted = Some(timestamp),
+                Err(e) => error!("Failed to write scene state snapshot to {}: {}", path, e),
+            }
+        }
+    }
+
+    /// Snapshot scene state to disk right now, if persistence is
+    /// enabled. Called on graceful shutdown so a planned restart never
+    /// loses anything, regardless of where in `run_state_snapshot_loop`'s
+    /// interval the shutdown happened.
+    pub async fn snapshot_state_now(&self) {
+        let Some(path) = &self.state_file else {
+            return;
+        };
+        let state = self.state.read().await;
+        match state.save_snapshot(path) {
+            Ok(()) => info!("Final scene state snapshot written to {}", path),
+            Err(e) => error!("Failed to write final scene state snapshot to {}: {}", path, e),
+        }
+    }
 }
 
 impl Default for PCHIConductor {
@@ -483,6 +563,53 @@ mod tests {
             result.is_err(),
             "3.0 is under the bundled default's 4.0 threshold but over this file's 2.0 — \
              an error here proves the custom file is the one actually loaded"
+        );
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[tokio::test]
+    async fn restart_resumes_scene_state_from_a_snapshot() {
+        let dir = std::env::temp_dir().join(format!("pchi-restart-test-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let state_path = dir.join("state.json");
+
+        // "Before restart": set a value, then snapshot the way graceful
+        // shutdown does.
+        let before = PCHIConductor::with_governance_paths(
+            1e-12,
+            dir.join("key.hex").to_str().unwrap(),
+            dir.join("log.jsonl").to_str().unwrap(),
+        )
+        .unwrap()
+        .with_state_file(state_path.to_str().unwrap());
+        let msg = PCHIMessage::new(
+            MessageType::ControlParameter,
+            "test".to_string(),
+            Payload::ControlParameter(ControlParameterData {
+                target_id: "kraken_main".to_string(),
+                parameter: "wobbliness".to_string(),
+                value: serde_json::json!(0.42),
+            }),
+        );
+        before.process_message(msg).await.unwrap();
+        before.snapshot_state_now().await;
+
+        // "After restart": a brand new conductor, same state file.
+        let after = PCHIConductor::with_governance_paths(
+            1e-12,
+            dir.join("key2.hex").to_str().unwrap(),
+            dir.join("log2.jsonl").to_str().unwrap(),
+        )
+        .unwrap()
+        .with_state_file(state_path.to_str().unwrap());
+
+        let resumed = after.get_state().await;
+        assert_eq!(
+            resumed.get_control_parameter("kraken_main.wobbliness"),
+            Some(0.42),
+            "a conductor pointed at the same state file must resume what the previous one set, \
+             not start blank"
         );
 
         let _ = std::fs::remove_dir_all(&dir);

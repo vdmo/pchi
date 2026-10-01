@@ -143,10 +143,101 @@ impl SceneState {
             EquilibriumStatus::Disequilibrium { residual }
         };
     }
+
+    /// Atomically write this state to `path` as JSON: serialize, write to
+    /// a sibling temp file, then rename into place. The rename is what
+    /// makes it atomic — a crash mid-write leaves the temp file
+    /// incomplete but never touches `path` itself, so the file there is
+    /// always either the previous complete snapshot or the new one,
+    /// never a half-written one.
+    pub fn save_snapshot(&self, path: &str) -> std::io::Result<()> {
+        let json = serde_json::to_vec_pretty(self)
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
+        let tmp_path = format!("{path}.tmp");
+        std::fs::write(&tmp_path, json)?;
+        std::fs::rename(&tmp_path, path)?;
+        Ok(())
+    }
+
+    /// Load a previously saved snapshot, if one exists and parses.
+    /// Returns `None` rather than an error on a missing or corrupt file:
+    /// scene state is a resilience convenience, not the safety-critical
+    /// record (that's the governance log, which does fail hard on
+    /// corruption — see `governance.rs`) — a bad snapshot should log a
+    /// warning and start fresh, not keep the conductor from coming up.
+    pub fn load_snapshot(path: &str) -> Option<Self> {
+        let bytes = std::fs::read(path).ok()?;
+        match serde_json::from_slice(&bytes) {
+            Ok(state) => Some(state),
+            Err(e) => {
+                tracing::warn!(
+                    "Scene state snapshot at {} is unreadable ({}), starting fresh",
+                    path,
+                    e
+                );
+                None
+            }
+        }
+    }
 }
 
 impl Default for SceneState {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn temp_path(name: &str) -> std::path::PathBuf {
+        std::env::temp_dir().join(format!("pchi-state-test-{}-{}", name, uuid::Uuid::new_v4()))
+    }
+
+    #[test]
+    fn save_then_load_round_trips_real_values() {
+        let path = temp_path("roundtrip");
+        let mut state = SceneState::new();
+        state.set_control_parameter("tentacle_system.total_curl".to_string(), 2.5);
+        state.update_musical_context(MusicalContext {
+            bpm: 128.0,
+            beat: 3,
+            kick: true,
+            snare: false,
+            section: "drop".to_string(),
+        });
+
+        state.save_snapshot(path.to_str().unwrap()).unwrap();
+        let loaded = SceneState::load_snapshot(path.to_str().unwrap()).unwrap();
+
+        assert_eq!(loaded.get_control_parameter("tentacle_system.total_curl"), Some(2.5));
+        assert_eq!(loaded.musical_context.unwrap().beat, 3);
+        assert_eq!(loaded.scene_id, state.scene_id, "identity, not just values, must survive a round trip");
+
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn save_leaves_no_temp_file_behind() {
+        let path = temp_path("no-temp-litter");
+        SceneState::new().save_snapshot(path.to_str().unwrap()).unwrap();
+        assert!(path.exists());
+        assert!(!std::path::Path::new(&format!("{}.tmp", path.to_str().unwrap())).exists());
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn load_missing_file_returns_none_not_an_error() {
+        let path = temp_path("does-not-exist");
+        assert!(SceneState::load_snapshot(path.to_str().unwrap()).is_none());
+    }
+
+    #[test]
+    fn load_corrupt_file_returns_none_instead_of_panicking() {
+        let path = temp_path("corrupt");
+        std::fs::write(&path, b"not valid json at all").unwrap();
+        assert!(SceneState::load_snapshot(path.to_str().unwrap()).is_none());
+        let _ = std::fs::remove_file(&path);
     }
 }

@@ -1,0 +1,8 @@
+{
+  "name": "pchi-multi-tool-live-show-demo",
+  "private": true,
+  "description": "Browser automation for the cables.gl leg of the multi-tool live show demo",
+  "dependencies": {
+    "puppeteer-core": "^25.9.0"
+  }
+}

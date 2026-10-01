@@ -1,0 +1,19 @@
+# Multi-Tool Live Show demo — Only-Lang rules
+#
+# Two rules, one shared object (resolume_layer_main.strobe_intensity),
+# enforced identically no matter which tool's bridge the update arrived
+# through. See demos/multi-tool-live-show/README.md for why every tool
+# in this demo converges on this exact key.
+
+harmony(1e-12)
+
+# Fires on every update to the object this demo watches, regardless of
+# value — gives Phase A (a safe value) a visible, signed ALLOW event to
+# show propagating live, not just "nothing happened" silence.
+if resolume_layer_main.strobe_intensity >= 0.0 then
+    evolve(resolume_layer_main, strobe_intensity)
+end
+
+if resolume_layer_main.strobe_intensity > 0.8 then
+    deny("Strobe intensity exceeds venue safety limit")
+end

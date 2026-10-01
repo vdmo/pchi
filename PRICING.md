@@ -11,9 +11,12 @@ code.
 Schema, conductor, rule engine, signed governance log, bridges — all of it,
 Apache-2.0/MIT (see `LICENSE`), no key required, no phone-home, no feature
 gated behind payment for someone running their own copy on their own
-machine. `primeswarm-pchi`'s `/governance/export` route supports an
-optional `PCHI_GOVERNANCE_KEY` — that's a *security* control for anyone
-exposing a conductor beyond localhost, not a paywall; it defaults open.
+machine. `primeswarm-pchi` supports an optional `PCHI_DASHBOARD_PASSWORD`
+gating its dashboard, `/ws` feed, and `/governance/export` — that's a
+*security* control for anyone exposing a conductor beyond localhost, not
+a paywall; it defaults open. Same for `--rules`/`PCHI_RULES_FILE`: a
+venue's own rule thresholds, loaded from a plain text file, free to write
+and change as often as you like.
 
 What's paid is work someone has to actually do on your behalf, not
 software we could give you for free and chose not to:

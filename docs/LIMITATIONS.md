@@ -56,16 +56,27 @@ separately; there is no cross-conductor verification story yet.
 **Not yet built:** the Cloud Conductor described in `PRICING.md` is the
 natural place to add this.
 
-## 4. `/governance/export` Access Control Is Opt-In, Not Default-Closed
+## 4. Dashboard Access Control Is Opt-In, Not Default-Closed
 
-`PCHI_GOVERNANCE_KEY` gates the export endpoint when set; it is **open by
-default**, deliberately, because this conductor is meant to be
-self-hosted on a machine its operator already controls — unlike DGV's
-`/decisions/export`, which was found open on a genuinely multi-tenant,
-publicly reachable deployment and is now closed by default (see DGV's
-`LIMITATIONS.md` §4 for that finding). If you expose a PCHI conductor
-beyond localhost, set the key yourself; the software will not do it for
-you.
+**[Improved]** `PCHI_DASHBOARD_PASSWORD`, when set, now gates all three
+HTTP surfaces — the dashboard page (`/`), its `/ws` telemetry feed, and
+`/governance/export` — behind HTTP Basic Auth (username `operator`),
+not just the export endpoint on its own as the earlier
+`PCHI_GOVERNANCE_KEY` did. It is still **open by default**, deliberately,
+because this conductor is meant to be self-hosted on a machine its
+operator already controls — unlike DGV's `/decisions/export`, which was
+found open on a genuinely multi-tenant, publicly reachable deployment and
+is now closed by default (see DGV's `LIMITATIONS.md` §4 for that
+finding). If you expose a PCHI conductor beyond localhost, set the
+password yourself; the software will not do it for you.
+
+One real gap: a non-browser WebSocket client connecting to `/ws`
+directly (not a page that already loaded `/` and cached credentials)
+must send its own `Authorization: Basic ...` header on the handshake —
+the plain browser `WebSocket` API has no way to attach one itself, so
+this only works automatically for the dashboard's own JS, which inherits
+credentials the browser cached from loading the authenticated page
+first.
 
 ## 5. No Independent Security Review
 
